@@ -3,7 +3,7 @@ layout: page.11ty.cjs
 title: <my-element> ⌲ Home
 ---
 
-# &lt;my-element>
+# <my-element>
 
 `<my-element>` is an awesome element. It's a great introduction to building web components with LitElement, with nice documentation site as well.
 
