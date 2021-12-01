@@ -66,16 +66,6 @@ export class KeyboardController extends LitElement {
    * Define our styles
    */
   static override styles = css`
-    :host {
-      box-sizing: border-box;
-    }
-
-    :host *,
-    :host *::before,
-    :host *::after {
-      box-sizing: inherit;
-    }
-
     .keyboard {
       background: black;
       display: inline-flex;

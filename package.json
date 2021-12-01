@@ -43,7 +43,9 @@
   "dependencies": {
     "@rematch/core": "^2.2.0",
     "lit": "^2.0.0",
-    "pwa-helpers": "^0.9.1"
+    "pts": "^0.10.6",
+    "pwa-helpers": "^0.9.1",
+    "tone": "^14.7.77"
   },
   "devDependencies": {
     "@11ty/eleventy": "^0.12.1",

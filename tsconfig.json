@@ -9,7 +9,6 @@
     "inlineSources": true,
     "outDir": "./",
     "rootDir": "./src",
-    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
@@ -24,7 +23,6 @@
     "plugins": [
       {
         "name": "ts-lit-plugin",
-        "strict": true
       }
     ]
   },
