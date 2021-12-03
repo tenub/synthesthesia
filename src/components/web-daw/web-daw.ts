@@ -1,24 +1,30 @@
 import { LitElement, html, css } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 
 import '../global-controls';
 import '../sound-library';
 import '../track-lanes';
-import '../input-chain';
+
+import {
+  ToneEvent,
+} from '../keyboard-controller/keyboard-controller.interface';
 
 @customElement('web-daw')
 export class WebDAW extends LitElement {
   static override styles = css`
     :host {
       --box-sizing: border-box;
-      --highlight-background-color: hsl(0, 0%, 18.75%);
-      --main-background-color: hsl(0, 0%, 12.5%);
+      --hsl-increment: 6.25%;
+      --background-color-1: hsl(0, 0%, var(--hsl-increment));
+      --background-color-2: hsl(0, 0%, calc(2 * var(--hsl-increment)));
+      --background-color-3: hsl(0, 0%, calc(3 * var(--hsl-increment)));
+      --background-color-4: hsl(0, 0%, calc(4 * var(--hsl-increment)));
+      --background-color-5: hsl(0, 0%, calc(5 * var(--hsl-increment)));
       --main-color: white;
-      --main-font-family: 'Open Sans', sans-serif;
+      --main-font-family: 'Roboto Condensed', sans-serif;
       --main-font-size: 16px;
-      --shadow-background-color: hsl(0, 0%, 6.25%);
 
-      background-color: var(--main-background-color);
+      background-color: var(--background-color-2);
       box-sizing: var(--box-sizing);
       color: var(--main-color);
       display: grid;
@@ -36,11 +42,48 @@ export class WebDAW extends LitElement {
     }
   `;
 
+  constructor() {
+    super();
+
+    this.addEventListener('tonestarted', this._startTone);
+    this.addEventListener('toneended', this._endTone);
+  }
+
+  @state()
+  tones: {
+    [frequency: number]: {
+      isPlaying: boolean,
+      velocity: number,
+    },
+  } = {}
+
+  private _startTone(event: ToneEvent) {
+    const { frequency, velocity } = event.detail;
+    this.tones = {
+      ...this.tones,
+      [frequency]: {
+        isPlaying: true,
+        velocity,
+      },
+    };
+  }
+
+  private _endTone(event: ToneEvent) {
+    const { frequency, velocity } = event.detail;
+    this.tones = {
+      ...this.tones,
+      [frequency]: {
+        isPlaying: false,
+        velocity,
+      },
+    };
+  }
+
   override render() {
     return html`
       <global-controls></global-controls>
       <sound-library></sound-library>
-      <track-lanes></track-lanes>
+      <track-lanes .tones=${this.tones}></track-lanes>
     `;
   }
 }

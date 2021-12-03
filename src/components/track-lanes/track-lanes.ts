@@ -1,18 +1,31 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
-
+import * as Tone from 'tone';
 
 import '../custom-icon';
+import '../input-chain';
+import './track-lane';
 
-import { Track } from './track-lanes.interface';
+import {
+  ToneEvent,
+} from '../keyboard-controller/keyboard-controller.interface';
+import {
+  Track,
+  TrackSelectedEvent,
+  TrackUpdatedEvent,
+} from './track-lane/track-lane.interface';
+import {
+  ToneType,
+  ToneHash,
+} from '../web-daw/web-daw.interface';
 
 @customElement('track-lanes')
 export class TrackLanes extends LitElement {
   static override styles = css`
     :host {
-      background-color: var(--main-background-color);
-      box-shadow: 0 0 1em var(--shadow-background-color);
+      background-color: var(--background-color-2);
+      box-shadow: 0 0 1em var(--background-color-1);
       box-sizing: var(--box-sizing);
       display: grid;
       grid-column: 2 / 2;
@@ -32,15 +45,6 @@ export class TrackLanes extends LitElement {
       overflow: auto;
     }
 
-    .track {
-      background-color: var(--highlight-background-color);
-      border-bottom: 1px solid var(--main-background-color);
-      border-top: 1px solid hsl(0, 0%, 25%);
-      height: 96px;
-      padding: 0.5em 1em;
-      width: 100%;
-    }
-
     .add-track {
       align-items: center;
       background: none;
@@ -54,7 +58,10 @@ export class TrackLanes extends LitElement {
     }
   `;
 
-  trackLaneRef = createRef<HTMLDivElement>();
+  trackLanesRef = createRef<HTMLDivElement>();
+
+  @property({ type: Object })
+  tones: ToneHash;
 
   @state()
   tracks: Array<Track> = [{
@@ -67,11 +74,41 @@ export class TrackLanes extends LitElement {
   @state()
   selectedTrackIndex = 0;
 
+  constructor() {
+    super();
+
+    this.addEventListener('trackselected', this._setSelectedTrack);
+    this.addEventListener('trackupdated', this._updateTrack);
+  }
+
+  override willUpdate() {
+    this._parseTones(this.tones);
+  }
+
+  private _parseTones(tones: ToneHash) {
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
+    const { generators } = selectedTrack;
+    if (!generators.length) {
+      return;
+    }
+
+    Object.entries(tones).forEach(([frequency, attributes]) => {
+      const { isPlaying, velocity } = attributes;
+      generators.forEach((generator) => {
+        if (isPlaying) {
+          generator.triggerAttack(frequency, 0, velocity);
+        } else {
+          generator.triggerRelease();
+        }
+      });
+    });
+  }
+
   private _addTrack = () => {
-    const newTrackIndex = this.tracks.length;
+    const newTrackId = this.tracks.length;
     const newTrack = {
-      id: newTrackIndex,
-      name: `Track ${newTrackIndex + 1}`,
+      id: newTrackId,
+      name: `Track ${newTrackId + 1}`,
       generators: [],
       effects: [],
     } as Track;
@@ -81,32 +118,39 @@ export class TrackLanes extends LitElement {
     ];
 
     setTimeout(() => {
-      const trackLane = this.trackLaneRef.value!;
+      const trackLane = this.trackLanesRef.value!;
       trackLane.scrollTop = trackLane.offsetHeight;
     });
   }
 
-  private _selectTrack = (index: number) => {
-    this.selectedTrackIndex = index;
-    const selectedTrack = this.tracks[index];
+  private _setSelectedTrack(event: TrackSelectedEvent) {
+    const id = event.detail;
+    const trackIndex = this.tracks.findIndex(track => track.id === id);
+    if (trackIndex === -1) {
+      return;
+    }
 
-    const event = new CustomEvent('trackselected', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: selectedTrack,
-    });
-    this.dispatchEvent(event);
+    this.selectedTrackIndex = trackIndex;
   }
 
-  private _renderTrack = (track: Track, index: number) => {
+  private _updateTrack(event: TrackUpdatedEvent) {
+    const { id, attributes } = event.detail;
+    const trackIndex = this.tracks.findIndex(track => track.id === id);
+    if (trackIndex === -1) {
+      return;
+    }
+
+    const trackToUpdate = this.tracks[trackIndex];
+    this.tracks = [
+      ...this.tracks.slice(0, trackIndex),
+      { ...trackToUpdate, ...attributes },
+      ...this.tracks.slice(trackIndex + 1),
+    ];
+  }
+
+  private _renderTrack(track: Track) {
     return html`
-      <div
-        class="track"
-        @click=${() => { this._selectTrack(index); }}
-      >
-        ${track.name}
-      </div>
+      <track-lane .track=${track}></track-lane>
     `;
   }
 
@@ -115,9 +159,10 @@ export class TrackLanes extends LitElement {
     return html`
       <div
         class="track-lanes"
-        ${ref(this.trackLaneRef)}
+        ${ref(this.trackLanesRef)}
       >
         ${this.tracks.map(this._renderTrack)}
+
         <button
           class="add-track"
           @click=${this._addTrack}

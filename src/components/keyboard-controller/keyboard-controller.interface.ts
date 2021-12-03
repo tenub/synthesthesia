@@ -34,3 +34,11 @@ export interface MIDIConnectionEvent extends Event {
 export interface MIDIMessageEvent extends Event {
   data: Uint8Array,
 }
+
+export interface ToneEvent extends CustomEvent {
+  detail: {
+    isPlaying?: boolean,
+    frequency: number,
+    velocity: number,
+  },
+}

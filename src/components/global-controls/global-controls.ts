@@ -2,25 +2,48 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
 import '../custom-icon';
+import '../keyboard-controller';
 
 @customElement('global-controls')
 export class GlobalControls extends LitElement {
   static override styles = css`
     :host {
-      align-items: center;
-      background-color: var(--main-background-color);
+      background-color: var(--background-color-2);
       background-image: linear-gradient(
-        var(--highlight-background-color),
-        var(--main-background-color)
+        var(--background-color-3),
+        var(--background-color-2)
       );
-      border-bottom: 1px solid var(--shadow-background-color);
-      box-shadow: 0 0 1em var(--shadow-background-color);
-      display: flex;
+      border-bottom: 1px solid var(--background-color-1);
+      box-shadow: 0 0 1em var(--background-color-1);
       grid-column: 1 / 3;
       grid-row: 1 / auto;
-      justify-content: center;
       position: relative;
       z-index: 4;
+    }
+
+    .controls--left {
+      align-items: center;
+      display: flex;
+      height: 100%;
+      left: 1em;
+      position: absolute;
+      top: 0;
+    }
+
+    .controls--center {
+      align-items: center;
+      display: flex;
+      height: 100%;
+      justify-content: center;
+    }
+
+    .controls--right {
+      align-items: center;
+      display: flex;
+      height: 100%;
+      right: 1em;
+      position: absolute;
+      top: 0;
     }
 
     button {
@@ -44,27 +67,35 @@ export class GlobalControls extends LitElement {
 
   override render() {
     return html`
-      <button class="bpm">
-        ${this.bpm}
-      </button>
+      <div class="controls--left">
+        <button class="bpm">
+          ${this.bpm}
+        </button>
+      </div>
 
-      <button>
-        <custom-icon>
-          play_arrow
-        </custom-icon>
-      </button>
+      <div class="controls--center">
+        <button>
+          <custom-icon>
+            play_arrow
+          </custom-icon>
+        </button>
 
-      <button>
-        <custom-icon>
-          stop
-        </custom-icon>
-      </button>
+        <button>
+          <custom-icon>
+            stop
+          </custom-icon>
+        </button>
 
-      <button>
-        <custom-icon>
-          fiber_manual_record
-        </custom-icon>
-      </button>
+        <button>
+          <custom-icon>
+            fiber_manual_record
+          </custom-icon>
+        </button>
+      </div>
+
+      <div class="controls--right">
+        <keyboard-controller></keyboard-controller>
+      </div>
     `;
   }
 }

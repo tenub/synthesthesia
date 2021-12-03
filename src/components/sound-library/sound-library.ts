@@ -1,17 +1,28 @@
 import { LitElement, html, css } from 'lit';
 import { customElement } from 'lit/decorators.js';
 
+import './chain-element';
+
 @customElement('sound-library')
 export class SoundLibrary extends LitElement {
   static override styles = css`
     :host {
-      background-color: var(--main-background-color);
-      box-shadow: 0 0 1em var(--shadow-background-color);
+      background-color: var(--background-color-2);
+      box-shadow: 0 0 1em var(--background-color-1);
       display: flex;
       grid-column: 1 / 1;
       grid-row: 2 / 2;
       position: relative;
       z-index: 3;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1em;
+    }
+
+    .sound-library {
+      padding: 0.5em 1em;
     }
   `;
 
@@ -22,28 +33,43 @@ export class SoundLibrary extends LitElement {
           <li>
             Generators
             <ul>
-              <li>Audio Buffer</li>
-              <li>Oscillator</li>
+              <li>
+                <chain-element
+                  draggable="true"
+                  type="generator"
+                  name="synth"
+                >
+                  Synth
+                </chain-element>
+              </li>
             </ul>
           </li>
           <li>
             Effects
             <ul>
-              <li>Auto Filter</li>
-              <li>Convolver</li>
-              <li>Delay</li>
-              <li>Dynamics Compressor</li>
-              <li>Gain</li>
-              <li>IIR Filter</li>
-              <li>Panner</li>
-              <li>Stereo Panner</li>
-              <li>Wave Shaper</li>
+              <li>
+                <chain-element
+                  draggable="true"
+                  type="effect"
+                  name="autofilter"
+                >
+                  Auto Filter
+                </chain-element>
+              </li>
             </ul>
           </li>
           <li>
             Utilities
             <ul>
-              <li>Analyser</li>
+              <li>
+                <chain-element
+                  draggable="true"
+                  type="utility"
+                  name="analyser"
+                >
+                  Analyser
+                </chain-element>
+              </li>
             </ul>
           </li>
         </ul>
