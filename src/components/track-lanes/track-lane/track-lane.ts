@@ -61,10 +61,10 @@ export class TrackLane extends LitElement {
     }
   `;
 
-  trackLabelRef = createRef<HTMLDivElement>();
-
   @property({ type: Object })
   track: Track;
+
+  trackLabelRef = createRef<HTMLDivElement>();
 
   private _selectTrack = () => {
     const event = new CustomEvent('trackselected', {

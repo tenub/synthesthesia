@@ -42,6 +42,16 @@ export class SoundLibrary extends LitElement {
                   Synth
                 </chain-element>
               </li>
+
+              <li>
+                <chain-element
+                  draggable="true"
+                  type="generator"
+                  name="polysynth"
+                >
+                  PolySynth
+                </chain-element>
+              </li>
             </ul>
           </li>
           <li>

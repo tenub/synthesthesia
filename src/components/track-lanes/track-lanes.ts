@@ -1,23 +1,19 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
-import * as Tone from 'tone';
 
 import '../custom-icon';
 import '../input-chain';
 import './track-lane';
 
 import {
-  ToneEvent,
-} from '../keyboard-controller/keyboard-controller.interface';
-import {
   Track,
   TrackSelectedEvent,
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
 import {
-  ToneType,
   ToneHash,
+  ToneType,
 } from '../web-daw/web-daw.interface';
 
 @customElement('track-lanes')
@@ -58,8 +54,6 @@ export class TrackLanes extends LitElement {
     }
   `;
 
-  trackLanesRef = createRef<HTMLDivElement>();
-
   @property({ type: Object })
   tones: ToneHash;
 
@@ -69,10 +63,13 @@ export class TrackLanes extends LitElement {
     name: 'Track 1',
     generators: [],
     effects: [],
+    utilities: [],
   }];
 
   @state()
   selectedTrackIndex = 0;
+
+  trackLanesRef = createRef<HTMLDivElement>();
 
   constructor() {
     super();
@@ -81,26 +78,61 @@ export class TrackLanes extends LitElement {
     this.addEventListener('trackupdated', this._updateTrack);
   }
 
-  override willUpdate() {
-    this._parseTones(this.tones);
+  override willUpdate(changedProperties: Map<string, any>) {
+    const prevTones = changedProperties.get('tones');
+    this._parseTones(prevTones, this.tones);
   }
 
-  private _parseTones(tones: ToneHash) {
+  private _parseTones(prevTones: ToneHash, tones: ToneHash) {
     const selectedTrack = this.tracks[this.selectedTrackIndex];
     const { generators } = selectedTrack;
     if (!generators.length) {
       return;
     }
 
-    Object.entries(tones).forEach(([frequency, attributes]) => {
-      const { isPlaying, velocity } = attributes;
-      generators.forEach((generator) => {
-        if (isPlaying) {
-          generator.triggerAttack(frequency, 0, velocity);
-        } else {
+    Object.entries(tones).forEach(([key, attributes]) => {
+      const frequency = Number(key);
+      const { isPlaying, velocity } = attributes as ToneType;
+      const prevTone = ((prevTones ?? {})[key] ?? {}) as ToneType;
+      if (isPlaying && !prevTone.isPlaying) {
+        this._startGenerators(generators, { frequency, velocity });
+      } else if (!isPlaying && prevTone.isPlaying) {
+        this._stopGenerators(generators, { frequency, velocity });
+      }
+    });
+  }
+
+  private _startGenerators(
+    generators: Array<any>,
+    attributes: { frequency: number, velocity: number },
+  ) {
+    generators.forEach((generator: any) => {
+      switch (generator.name) {
+        case 'Synth':
+        case 'PolySynth':
+          generator.triggerAttack(attributes.frequency, 0, attributes.velocity);
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  private _stopGenerators(
+    generators: Array<any>,
+    attributes: { frequency: number, velocity: number },
+  ) {
+    generators.forEach((generator: any) => {
+      switch (generator.name) {
+        case 'Synth':
           generator.triggerRelease();
-        }
-      });
+          break;
+        case 'PolySynth':
+          generator.triggerRelease(attributes.frequency);
+          break;
+        default:
+          break;
+      }
     });
   }
 

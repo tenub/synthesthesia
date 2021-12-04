@@ -8,6 +8,9 @@ import '../track-lanes';
 import {
   ToneEvent,
 } from '../keyboard-controller/keyboard-controller.interface';
+import {
+  ToneHash,
+} from './web-daw.interface';
 
 @customElement('web-daw')
 export class WebDAW extends LitElement {
@@ -50,12 +53,7 @@ export class WebDAW extends LitElement {
   }
 
   @state()
-  tones: {
-    [frequency: number]: {
-      isPlaying: boolean,
-      velocity: number,
-    },
-  } = {}
+  tones: ToneHash = {}
 
   private _startTone(event: ToneEvent) {
     const { frequency, velocity } = event.detail;

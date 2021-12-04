@@ -1,18 +1,9 @@
 export interface Track {
   id: number,
   name: string,
-  generators: Array<TrackGenerator>,
-  effects: Array<TrackEffect>,
-}
-
-export interface TrackGenerator {
-  id: number,
-  name: string,
-}
-
-export interface TrackEffect {
-  id: number,
-  name: string,
+  generators: Array<any>,
+  effects: Array<any>,
+  utilities: Array<any>
 }
 
 export interface TrackSelectedEvent extends CustomEvent {
@@ -24,8 +15,8 @@ export interface TrackUpdatedEvent extends CustomEvent {
     id: number,
     attributes: {
       name?: string,
-      generators?: Array<TrackGenerator>,
-      effects?: Array<TrackEffect>,
+      generators?: Array<any>,
+      effects?: Array<any>,
     },
   },
 }
