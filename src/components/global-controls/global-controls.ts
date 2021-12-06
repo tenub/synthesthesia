@@ -1,8 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
-import '../custom-icon';
-import '../keyboard-controller';
+import '../shared/custom-icon';
 
 @customElement('global-controls')
 export class GlobalControls extends LitElement {
@@ -91,10 +90,6 @@ export class GlobalControls extends LitElement {
             fiber_manual_record
           </custom-icon>
         </button>
-      </div>
-
-      <div class="controls--right">
-        <keyboard-controller></keyboard-controller>
       </div>
     `;
   }

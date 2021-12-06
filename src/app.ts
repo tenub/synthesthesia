@@ -1,9 +1,9 @@
 import { LitElement, html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 
-import './components/web-daw';
+import './web-daw';
 
-@customElement('main-app')
+@customElement('synthesthesia-app')
 export class App extends LitElement {
   override render() {
     return html`
@@ -14,6 +14,6 @@ export class App extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'main-app': App;
+    'synthesthesia-app': App;
   }
 }

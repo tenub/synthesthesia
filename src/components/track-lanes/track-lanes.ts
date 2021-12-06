@@ -2,8 +2,8 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 
-import '../custom-icon';
-import '../input-chain';
+import '../shared/custom-icon';
+import './input-chain';
 import './track-lane';
 
 import {
@@ -12,9 +12,10 @@ import {
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
 import {
-  ToneHash,
-  ToneType,
-} from '../web-daw/web-daw.interface';
+  MIDIInput,
+  MIDIOutput,
+  MIDINoteInput,
+} from '../../web-daw/web-daw.interface';
 
 @customElement('track-lanes')
 export class TrackLanes extends LitElement {
@@ -54,13 +55,21 @@ export class TrackLanes extends LitElement {
     }
   `;
 
+  @property({ type: Array })
+  midiInputs: MIDIInput[];
+
+  @property({ type: Array })
+  midiOutputs: MIDIOutput[];
+
   @property({ type: Object })
-  tones: ToneHash;
+  midiNotes: MIDINoteInput;
 
   @state()
-  tracks: Array<Track> = [{
+  tracks: Track[] = [{
     id: 0,
     name: 'Track 1',
+    input: null,
+    output: null,
     generators: [],
     effects: [],
     utilities: [],
@@ -78,32 +87,21 @@ export class TrackLanes extends LitElement {
     this.addEventListener('trackupdated', this._updateTrack);
   }
 
-  override willUpdate(changedProperties: Map<string, any>) {
-    const prevTones = changedProperties.get('tones');
-    this._parseTones(prevTones, this.tones);
-  }
-
-  private _parseTones(prevTones: ToneHash, tones: ToneHash) {
+  /* private _handleNoteChange(
+    input: MIDIInput,
+    status: string,
+    note: number,
+    velocity: number,
+  ) {
     const selectedTrack = this.tracks[this.selectedTrackIndex];
     const { generators } = selectedTrack;
     if (!generators.length) {
       return;
     }
-
-    Object.entries(tones).forEach(([key, attributes]) => {
-      const frequency = Number(key);
-      const { isPlaying, velocity } = attributes as ToneType;
-      const prevTone = ((prevTones ?? {})[key] ?? {}) as ToneType;
-      if (isPlaying && !prevTone.isPlaying) {
-        this._startGenerators(generators, { frequency, velocity });
-      } else if (!isPlaying && prevTone.isPlaying) {
-        this._stopGenerators(generators, { frequency, velocity });
-      }
-    });
   }
 
   private _startGenerators(
-    generators: Array<any>,
+    generators: any[],
     attributes: { frequency: number, velocity: number },
   ) {
     generators.forEach((generator: any) => {
@@ -119,7 +117,7 @@ export class TrackLanes extends LitElement {
   }
 
   private _stopGenerators(
-    generators: Array<any>,
+    generators: any[],
     attributes: { frequency: number, velocity: number },
   ) {
     generators.forEach((generator: any) => {
@@ -134,15 +132,18 @@ export class TrackLanes extends LitElement {
           break;
       }
     });
-  }
+  } */
 
   private _addTrack = () => {
     const newTrackId = this.tracks.length;
     const newTrack = {
       id: newTrackId,
       name: `Track ${newTrackId + 1}`,
+      input: null,
+      output: null,
       generators: [],
       effects: [],
+      utilities: [],
     } as Track;
     this.tracks = [
       ...this.tracks,
@@ -172,17 +173,19 @@ export class TrackLanes extends LitElement {
       return;
     }
 
-    const trackToUpdate = this.tracks[trackIndex];
-    this.tracks = [
-      ...this.tracks.slice(0, trackIndex),
-      { ...trackToUpdate, ...attributes },
-      ...this.tracks.slice(trackIndex + 1),
-    ];
+    const updatedTracks = this.tracks.slice();
+    const trackToUpdate = updatedTracks[trackIndex];
+    updatedTracks[trackIndex] = { ...trackToUpdate, ...attributes };
+    this.tracks = updatedTracks;
   }
 
-  private _renderTrack(track: Track) {
+  private _renderTrack = (track: Track) => {
     return html`
-      <track-lane .track=${track}></track-lane>
+      <track-lane
+        .midiInputs=${this.midiInputs}
+        .midiOutputs=${this.midiOutputs}
+        .track=${track}
+      ></track-lane>
     `;
   }
 

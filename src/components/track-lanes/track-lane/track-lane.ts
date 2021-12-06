@@ -3,8 +3,9 @@ import { customElement, property } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 
 
-import '../../custom-icon';
+import '../../shared/custom-icon';
 
+import { MIDIInput, MIDIOutput } from '../../../web-daw/web-daw.interface';
 import { Track } from './track-lane.interface';
 
 @customElement('track-lane')
@@ -61,10 +62,18 @@ export class TrackLane extends LitElement {
     }
   `;
 
+  @property({ type: Array })
+  midiInputs: MIDIInput[];
+
+  @property({ type: Array })
+  midiOutputs: MIDIOutput[];
+
   @property({ type: Object })
   track: Track;
 
   trackLabelRef = createRef<HTMLDivElement>();
+
+  trackMidiInputRef = createRef<HTMLSelectElement>();
 
   private _selectTrack = () => {
     const event = new CustomEvent('trackselected', {
@@ -108,6 +117,34 @@ export class TrackLane extends LitElement {
     trackLabel.blur();
   }
 
+  private _updateTrackInput = () => {
+    const midiInput = this.trackMidiInputRef.value! as HTMLSelectElement;
+    const newTrackInputId = midiInput.value;
+    const event = new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: this.track.id,
+        attributes: {
+          inputId: newTrackInputId,
+        },
+      },
+    });
+    this.dispatchEvent(event);
+  }
+
+  private _renderMidiInputs(input: MIDIInput) {
+    return html`
+      <option
+        name=${input.name}
+        value=${input.id}
+      >
+        ${input.name}
+      </option>
+    `;
+  }
+
   override render() {
     return html`
       <div
@@ -122,6 +159,16 @@ export class TrackLane extends LitElement {
             @input=${this._updateTrackName}
             @keydown=${this._blurTrackLabel}
           >${this.track.name}</textarea>
+        </div>
+
+        <div class="track__midi">
+          <select
+            ${ref(this.trackMidiInputRef)}
+            class="track__midi-input"
+            @change=${this._updateTrackInput}
+          >
+            ${this.midiInputs.map(this._renderMidiInputs)}
+          </select>
         </div>
       </div>
     `;
