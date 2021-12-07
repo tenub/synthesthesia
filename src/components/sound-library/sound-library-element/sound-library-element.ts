@@ -1,8 +1,15 @@
-import { LitElement, html } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-@customElement('chain-element')
-export class ChainElement extends LitElement {
+@customElement('sound-library-element')
+export class SoundLibraryElement extends LitElement {
+  static override styles = css`
+    :host {
+      align-items: center;
+      display: flex;
+    }
+  `;
+
   @property({ type: String })
   type: string;
 
@@ -33,6 +40,6 @@ export class ChainElement extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'chain-element': ChainElement;
+    'sound-library-element': SoundLibraryElement;
   }
 }

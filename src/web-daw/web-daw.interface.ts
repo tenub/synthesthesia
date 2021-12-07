@@ -47,5 +47,5 @@ export interface MIDINoteInput {
 }
 
 export interface MIDINotes {
-  [note: number]: number,
+  [note: string]: number,
 }

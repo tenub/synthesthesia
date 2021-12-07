@@ -17,17 +17,9 @@ import {
 
 @customElement('web-daw')
 export class WebDAW extends LitElement {
-  static TUNING_FREQUENCY = 440;
-
   static MIDI_NOTE_ON = 144;
 
   static MIDI_NOTE_OFF = 128;
-
-  static midiNumberToFrequency(m: number): number {
-    const f2 = WebDAW.TUNING_FREQUENCY;
-    const f1 = Math.pow(2, (m - 69) / 12) * f2;
-    return Math.round((f1 + Number.EPSILON) * 100) / 100;
-  }
 
   static findMidiPortById(ports: MIDIPort[], id: string): number {
     return ports.findIndex(port => port.id === id);
@@ -144,16 +136,26 @@ export class WebDAW extends LitElement {
     switch (status) {
       case WebDAW.MIDI_NOTE_ON: {
         const [note, velocity] = data;
+        const key = note.toString();
         const updatedMidiNotes = { ...this.midiNotes };
-        updatedMidiNotes[midiInput.id][note] = velocity;
+        const updatedMidiInputNotes = {
+          ...updatedMidiNotes[midiInput.id],
+          [key]: velocity,
+        };
+        updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
         this.midiNotes = updatedMidiNotes;
         break;
       }
 
       case WebDAW.MIDI_NOTE_OFF: {
         const [note] = data;
+        const key = note.toString();
         const updatedMidiNotes = { ...this.midiNotes };
-        delete updatedMidiNotes[midiInput.id][note];
+        const {
+          [key]: keyToRemove,
+          ...updatedMidiInputNotes
+        } = updatedMidiNotes[midiInput.id];
+        updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
         this.midiNotes = updatedMidiNotes;
         break;
       }

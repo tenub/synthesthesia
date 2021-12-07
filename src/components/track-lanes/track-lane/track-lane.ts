@@ -60,6 +60,26 @@ export class TrackLane extends LitElement {
       border-width: 0 0 1px;
       outline: none;
     }
+
+    .track__midi {
+      margin-top: calc(-1 / 6 * 1em);
+      padding: 0.5em 1em;
+    }
+
+    .track__midi-input {
+      background: none;
+      border: none;
+      color: var(--main-color);
+      font-size: 12px;
+    }
+
+    .track__midi-input:focus {
+      outline: none;
+    }
+
+    .track__midi-input option {
+      color: black;
+    }
   `;
 
   @property({ type: Array })
@@ -75,36 +95,43 @@ export class TrackLane extends LitElement {
 
   trackMidiInputRef = createRef<HTMLSelectElement>();
 
-  private _selectTrack = () => {
+  private _dispatchSelectTrack = () => {
+    const detail = this.track.id;
     const event = new CustomEvent('trackselected', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail: this.track.id,
+      detail,
     });
     this.dispatchEvent(event);
   }
 
-  private _selectTrackLabel = () => {
-    const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
-    trackLabel.select();
+  private _dispatchUpdateTrack = (attributes: object) => {
+    const detail = { id: this.track.id, attributes };
+    const event = new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail,
+    });
+    this.dispatchEvent(event);
   }
 
   private _updateTrackName = () => {
     const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
     const newTrackName = trackLabel.value;
-    const event = new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: this.track.id,
-        attributes: {
-          name: newTrackName,
-        },
-      },
-    });
-    this.dispatchEvent(event);
+    this._dispatchUpdateTrack({ name: newTrackName });
+  }
+
+  private _updateTrackInput = () => {
+    const midiInput = this.trackMidiInputRef.value! as HTMLSelectElement;
+    const newTrackInputId = midiInput.value;
+    this._dispatchUpdateTrack({ inputId: newTrackInputId });
+  }
+
+  private _selectTrackLabel = () => {
+    const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
+    trackLabel.select();
   }
 
   private _blurTrackLabel = (event: KeyboardEvent) => {
@@ -115,23 +142,6 @@ export class TrackLane extends LitElement {
 
     const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
     trackLabel.blur();
-  }
-
-  private _updateTrackInput = () => {
-    const midiInput = this.trackMidiInputRef.value! as HTMLSelectElement;
-    const newTrackInputId = midiInput.value;
-    const event = new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: this.track.id,
-        attributes: {
-          inputId: newTrackInputId,
-        },
-      },
-    });
-    this.dispatchEvent(event);
   }
 
   private _renderMidiInputs(input: MIDIInput) {
@@ -149,16 +159,17 @@ export class TrackLane extends LitElement {
     return html`
       <div
         class="track"
-        @click=${this._selectTrack}
+        @click=${this._dispatchSelectTrack}
       >
         <div class="track__controls">
           <textarea
             ${ref(this.trackLabelRef)}
             class="track__label"
+            .value=${this.track.name}
             @focus=${this._selectTrackLabel}
             @input=${this._updateTrackName}
             @keydown=${this._blurTrackLabel}
-          >${this.track.name}</textarea>
+          ></textarea>
         </div>
 
         <div class="track__midi">

@@ -1,9 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { ref, createRef } from 'lit/directives/ref.js';
 import * as Tone from 'tone';
 
-import { Track } from '../track-lanes/track-lane/track-lane.interface';
+import { Track } from '../track-lane/track-lane.interface';
 
 import './input-generator';
 
@@ -11,10 +10,37 @@ import './input-generator';
 export class InputChain extends LitElement {
   static defineGenerator(name: string): any {
     switch (name) {
+      case 'am-synth':
+        return Tone.AMSynth;
+      case 'duo-synth':
+        return Tone.DuoSynth;
+      case 'fm-synth':
+        return Tone.FMSynth;
+      case 'membrane-synth':
+        return Tone.MembraneSynth;
+      case 'metal-synth':
+        return Tone.MetalSynth;
+      case 'mono-synth':
+        return Tone.MonoSynth;
+      case 'noise-synth':
+        return Tone.NoiseSynth;
+      case 'pluck-synth':
+        return Tone.PluckSynth;
+      case 'poly-synth':
+        return Tone.PolySynth;
+      case 'sampler':
+        return Tone.Sampler;
       case 'synth':
         return Tone.Synth;
-      case 'polysynth':
-        return Tone.PolySynth;
+      default:
+        return undefined;
+    }
+  }
+
+  static defineEffect(name: string): any {
+    switch (name) {
+      case 'reverb':
+        return Tone.Reverb;
       default:
         return undefined;
     }
@@ -94,8 +120,6 @@ export class InputChain extends LitElement {
   @property({ type: Object })
   track: Track;
 
-  generatorsRef = createRef<HTMLDivElement>();
-
   constructor() {
     super();
 
@@ -139,14 +163,27 @@ export class InputChain extends LitElement {
       break;
 
       case 'effect': {
-        switch (name) {
-          case 'autofilter': {
-            
-          }
-          break;
-
-          default: break;
+        const ToneEffect = InputChain.defineEffect(name);
+        if (!ToneEffect) {
+          return;
         }
+
+        const toneEffect = new ToneEffect().toDestination();
+        const event = new CustomEvent('trackupdated', {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+          detail: {
+            id: this.track.id,
+            attributes: {
+              effects: [
+                ...this.track.effects,
+                toneEffect,
+              ],
+            },
+          },
+        });
+        this.dispatchEvent(event);
       }
       break;
 
@@ -171,9 +208,12 @@ export class InputChain extends LitElement {
     this.track = selectedTrack;
   }
 
-  private _renderGenerator(generator: any) {
+  private _renderGenerator(generator: any, index: number) {
     return html`
-      <input-generator .generator=${generator}></input-generator>
+      <input-generator
+        generatorIndex=${index}
+        .generator=${generator}
+      ></input-generator>
     `;
   }
 
@@ -196,10 +236,7 @@ export class InputChain extends LitElement {
           ${this.track.name}
         </div>
 
-        <div
-          ${ref(this.generatorsRef)}
-          class="input-chain__generators"
-        >
+        <div class="input-chain__generators">
           ${this.track.generators.map(this._renderGenerator)}
         </div>
 

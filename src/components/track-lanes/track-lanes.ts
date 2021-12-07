@@ -12,6 +12,9 @@ import {
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
 import {
+  GeneratorRemovedEvent,
+} from './input-chain/input-generator/input.generator.interface';
+import {
   MIDIInput,
   MIDIOutput,
   MIDINoteInput,
@@ -19,6 +22,18 @@ import {
 
 @customElement('track-lanes')
 export class TrackLanes extends LitElement {
+  static TUNING_FREQUENCY = 440;
+
+  static MIDI_NOTE_ON = 144;
+
+  static MIDI_NOTE_OFF = 128;
+
+  static midiNumberToFrequency(m: number): number {
+    const f2 = TrackLanes.TUNING_FREQUENCY;
+    const f1 = Math.pow(2, (m - 69) / 12) * f2;
+    return f1 + Number.EPSILON;
+  }
+
   static override styles = css`
     :host {
       background-color: var(--background-color-2);
@@ -68,8 +83,8 @@ export class TrackLanes extends LitElement {
   tracks: Track[] = [{
     id: 0,
     name: 'Track 1',
-    input: null,
-    output: null,
+    inputId: null,
+    outputId: null,
     generators: [],
     effects: [],
     utilities: [],
@@ -83,32 +98,61 @@ export class TrackLanes extends LitElement {
   constructor() {
     super();
 
-    this.addEventListener('trackselected', this._setSelectedTrack);
-    this.addEventListener('trackupdated', this._updateTrack);
+    this.addEventListener('trackselected', this._handleSelectTrack);
+    this.addEventListener('trackupdated', this._handleUpdateTrack);
+    this.addEventListener('generatorremoved', this._handleRemoveGenerator);
   }
 
-  /* private _handleNoteChange(
-    input: MIDIInput,
-    status: string,
-    note: number,
-    velocity: number,
-  ) {
-    const selectedTrack = this.tracks[this.selectedTrackIndex];
-    const { generators } = selectedTrack;
-    if (!generators.length) {
-      return;
-    }
+  override willUpdate(changedProperties: Map<string, any>) {
+    const prevMidiNotes = changedProperties.get('midiNotes') ?? {};
+    this.tracks.forEach((track: Track) => {
+      if (!track.inputId) {
+        return;
+      }
+
+      const prevNotes = prevMidiNotes[track.inputId] ?? {};
+      const notes = this.midiNotes[track.inputId] ?? {};
+      Object.entries(notes).forEach(([key, velocity]) => {
+        const note = Number(key);
+        const frequency = TrackLanes.midiNumberToFrequency(note);
+        const gain = velocity / 127;
+        if (!prevNotes[key]) {
+          this._startGenerators(track.generators, { frequency, gain });
+        }
+      });
+
+      Object.entries(prevNotes).forEach(([key]) => {
+        if (!notes[key]) {
+          const note = Number(key);
+          const frequency = TrackLanes.midiNumberToFrequency(note);
+          this._stopGenerators(track.generators, { frequency });
+        }
+      });
+    });
   }
 
   private _startGenerators(
     generators: any[],
-    attributes: { frequency: number, velocity: number },
+    attributes: { frequency: number, gain: number },
   ) {
     generators.forEach((generator: any) => {
       switch (generator.name) {
-        case 'Synth':
+        case 'AMSynth':
+        case 'DuoSynth':
+        case 'FMSynth':
+        case 'MembraneSynth':
+        case 'MetalSynth':
+        case 'MonoSynth':
         case 'PolySynth':
-          generator.triggerAttack(attributes.frequency, 0, attributes.velocity);
+        case 'Sampler':
+        case 'Synth':
+          generator.triggerAttack(attributes.frequency, 0, attributes.gain);
+          break;
+        case 'PluckSynth':
+          generator.triggerAttack(attributes.frequency);
+          break;
+        case 'NoiseSynth':
+          generator.triggerAttack(0, attributes.gain);
           break;
         default:
           break;
@@ -118,29 +162,56 @@ export class TrackLanes extends LitElement {
 
   private _stopGenerators(
     generators: any[],
-    attributes: { frequency: number, velocity: number },
+    attributes: { frequency: number },
   ) {
     generators.forEach((generator: any) => {
       switch (generator.name) {
+        case 'AMSynth':
+        case 'DuoSynth':
+        case 'FMSynth':
+        case 'MembraneSynth':
+        case 'MetalSynth':
+        case 'MonoSynth':
+        case 'NoiseSynth':
+        case 'PluckSynth':
         case 'Synth':
           generator.triggerRelease();
           break;
         case 'PolySynth':
+        case 'Sampler':
           generator.triggerRelease(attributes.frequency);
           break;
         default:
           break;
       }
     });
-  } */
+  }
+
+  private _handleRemoveGenerator = (event: GeneratorRemovedEvent) => {
+    const generatorIndex = event.detail;
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
+    const updatedGenerators = selectedTrack.generators.slice();
+    updatedGenerators.splice(generatorIndex, 1);
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: selectedTrack.id,
+        attributes: {
+          generators: updatedGenerators,
+        },
+      },
+    }));
+  }
 
   private _addTrack = () => {
     const newTrackId = this.tracks.length;
     const newTrack = {
       id: newTrackId,
       name: `Track ${newTrackId + 1}`,
-      input: null,
-      output: null,
+      inputId: null,
+      outputId: null,
       generators: [],
       effects: [],
       utilities: [],
@@ -156,7 +227,7 @@ export class TrackLanes extends LitElement {
     });
   }
 
-  private _setSelectedTrack(event: TrackSelectedEvent) {
+  private _handleSelectTrack(event: TrackSelectedEvent) {
     const id = event.detail;
     const trackIndex = this.tracks.findIndex(track => track.id === id);
     if (trackIndex === -1) {
@@ -166,7 +237,7 @@ export class TrackLanes extends LitElement {
     this.selectedTrackIndex = trackIndex;
   }
 
-  private _updateTrack(event: TrackUpdatedEvent) {
+  private _handleUpdateTrack(event: TrackUpdatedEvent) {
     const { id, attributes } = event.detail;
     const trackIndex = this.tracks.findIndex(track => track.id === id);
     if (trackIndex === -1) {
