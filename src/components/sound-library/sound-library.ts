@@ -8,23 +8,12 @@ import { SoundLibraryItem } from './sound-library.interface';
 
 @customElement('sound-library')
 export class SoundLibrary extends LitElement {
-  static generators: SoundLibraryItem[] = [
-    // Instrument
-    { id: 'am-synth', name: 'AMSynth', type: 'generator' },
-    { id: 'duo-synth', name: 'DuoSynth', type: 'generator' },
-    { id: 'fm-synth', name: 'FMSynth', type: 'generator' },
-    { id: 'membrane-synth', name: 'MembraneSynth', type: 'generator' },
-    { id: 'metal-synth', name: 'MetalSynth', type: 'generator' },
-    { id: 'mono-synth', name: 'MonoSynth', type: 'generator' },
-    { id: 'noise-synth', name: 'NoiseSynth', type: 'generator' },
-    { id: 'pluck-synth', name: 'PluckSynth', type: 'generator' },
-    { id: 'poly-synth', name: 'PolySynth', type: 'generator' },
-    { id: 'sampler', name: 'Sampler', type: 'generator' },
-    { id: 'synth', name: 'Synth', type: 'generator' },
+  static instruments: SoundLibraryItem[] = [
+    { id: 'synth', name: 'Synth', type: 'instrument' },
+    { id: 'sampler', name: 'Sampler', type: 'instrument' },
   ]
 
   static effects: SoundLibraryItem[] = [
-    // Effect
     { id: 'auto-filter', name: 'AutoFilter', type: 'effect' },
     { id: 'auto-panner', name: 'AutoPanner', type: 'effect' },
     { id: 'auto-wah', name: 'AutoWah', type: 'effect' },
@@ -44,14 +33,13 @@ export class SoundLibrary extends LitElement {
     { id: 'stereo-widener', name: 'StereoWidener', type: 'effect' },
     { id: 'tremolo', name: 'Tremolo', type: 'effect' },
     { id: 'vibrato', name: 'Vibrato', type: 'effect' },
-    // Component
+
     { id: 'compressor', name: 'Compressor', type: 'effect' },
     { id: 'eq3', name: 'EQ3', type: 'effect' },
     { id: 'limiter', name: 'Limiter', type: 'effect' },
   ]
 
   static utilities: SoundLibraryItem[] = [
-    // Component
     { id: 'analyser', name: 'Analyser', type: 'utility' },
   ]
 
@@ -151,7 +139,8 @@ export class SoundLibrary extends LitElement {
         <sound-library-element
           draggable="true"
           type=${item.type}
-          name=${item.id}
+          itemId=${item.id}
+          name=${item.name}
         >
           <custom-icon size="tiny">add</custom-icon>
           ${item.name}
@@ -173,9 +162,9 @@ export class SoundLibrary extends LitElement {
 
         <ul class="sound-library__categories">
           <li>
-            <h1>Generators</h1>
+            <h1>Instruments</h1>
             <ul class="sound-library__items">
-              ${SoundLibrary.generators.reduce(this._filterAndRenderItems, [])}
+              ${SoundLibrary.instruments.reduce(this._filterAndRenderItems, [])}
             </ul>
           </li>
           <li>

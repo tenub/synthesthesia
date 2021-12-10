@@ -14,6 +14,9 @@ export class SoundLibraryElement extends LitElement {
   type: string;
 
   @property({ type: String })
+  itemId: string;
+
+  @property({ type: String })
   name: string;
 
   constructor() {
@@ -24,8 +27,9 @@ export class SoundLibraryElement extends LitElement {
 
   private _handleDragStart = (event: DragEvent) => {
     const data = JSON.stringify({
-      type: this.type,
+      id: this.itemId,
       name: this.name,
+      type: this.type,
     });
     event.dataTransfer.setData('text/plain', data);
     event.dataTransfer.effectAllowed = 'move';

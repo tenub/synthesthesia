@@ -1,11 +1,9 @@
-import { MIDIInput, MIDIOutput } from "../../../web-daw/web-daw.interface";
-
 export interface Track {
   id: number,
   name: string,
   inputId: string,
   outputId: string,
-  generators: any[],
+  instrument: any,
   effects: any[],
   utilities: any[]
 }
@@ -21,7 +19,7 @@ export interface TrackUpdatedEvent extends CustomEvent {
       name?: string,
       inputId?: string,
       outputId?: string,
-      generators?: any[],
+      instrument?: any,
       effects?: any[],
       utilities?: any[],
     },

@@ -4,48 +4,11 @@ import * as Tone from 'tone';
 
 import { Track } from '../track-lane/track-lane.interface';
 
-import './input-generator';
+import './input-instrument';
+import './input-effect';
 
 @customElement('input-chain')
 export class InputChain extends LitElement {
-  static defineGenerator(name: string): any {
-    switch (name) {
-      case 'am-synth':
-        return Tone.AMSynth;
-      case 'duo-synth':
-        return Tone.DuoSynth;
-      case 'fm-synth':
-        return Tone.FMSynth;
-      case 'membrane-synth':
-        return Tone.MembraneSynth;
-      case 'metal-synth':
-        return Tone.MetalSynth;
-      case 'mono-synth':
-        return Tone.MonoSynth;
-      case 'noise-synth':
-        return Tone.NoiseSynth;
-      case 'pluck-synth':
-        return Tone.PluckSynth;
-      case 'poly-synth':
-        return Tone.PolySynth;
-      case 'sampler':
-        return Tone.Sampler;
-      case 'synth':
-        return Tone.Synth;
-      default:
-        return undefined;
-    }
-  }
-
-  static defineEffect(name: string): any {
-    switch (name) {
-      case 'reverb':
-        return Tone.Reverb;
-      default:
-        return undefined;
-    }
-  }
-
   static override styles = css`
     :host {
       background-color: var(--background-color-2);
@@ -68,7 +31,7 @@ export class InputChain extends LitElement {
     .input-chain {
       display: grid;
       gap: 0 0.5em;
-      grid-template-columns: [generators-col] auto
+      grid-template-columns: [instrument-col] auto
                              [effects-col] auto
                              [utilities-col] auto ;
       grid-template-rows: [title-row] 20px [chain-row] auto;
@@ -80,7 +43,7 @@ export class InputChain extends LitElement {
       grid-row: 1 / 1;
     }
 
-    .input-chain__generators,
+    .input-chain__instrument,
     .input-chain__effects,
     .input-chain__utilities {
       background-color: var(--background-color-3);
@@ -95,7 +58,7 @@ export class InputChain extends LitElement {
       padding: 0.5em 0;
     }
 
-    .input-chain__generators {
+    .input-chain__instrument {
       grid-column: 1 / 1;
       grid-row: 2 / 2;
     }
@@ -109,12 +72,6 @@ export class InputChain extends LitElement {
       grid-column: 3 / 3;
       grid-row: 2 / 2;
     }
-
-    /* .input-chain__generators,
-    .input-chain__effects {
-      transform: rotateZ(-90deg) translateX(-100%);
-      transform-origin: top left;
-    } */
   `;
 
   @property({ type: Object })
@@ -128,6 +85,66 @@ export class InputChain extends LitElement {
     this.addEventListener('trackselected', this._handleTrackSelected);
   }
 
+  private _defineInstrument(id: string, name: string): any {
+    const [firstEffect] = this.track.effects;
+
+    let toneInstrument;
+    switch (id) {
+      case 'synth': {
+        toneInstrument = new Tone.PolySynth();
+
+        if (firstEffect) {
+          toneInstrument.disconnect().connect(firstEffect.toneEffect);
+        } else {
+          toneInstrument.toDestination();
+        }
+
+        break;
+      }
+      case 'sampler':
+        toneInstrument = new Tone.Sampler().toDestination();
+        break;
+      default:
+        return;
+    }
+
+    return {
+      id,
+      name,
+      generators: [],
+      toneInstrument,
+    };
+  }
+
+  private _defineEffect(id: string, name: string): any {
+    const instrument = this.track.instrument;
+
+    let toneEffect;
+    switch (id) {
+      case 'reverb': {
+        toneEffect = new Tone.Reverb({
+          decay: 10,
+          wet: 0.5,
+        }).toDestination();
+
+        if (instrument) {
+          instrument.toneInstrument.disconnect().connect(toneEffect);
+        }
+
+        break;
+      }
+
+      default:
+        return;
+    }
+
+    return {
+      id,
+      name,
+      toneEffect,
+    };
+  }
+
   private _allowDrop = (event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -135,40 +152,33 @@ export class InputChain extends LitElement {
 
   private _handleDrop = (event: DragEvent) => {
     const data = event.dataTransfer.getData('text/plain');
-    const { type, name } = JSON.parse(data);
+    const { type, id, name } = JSON.parse(data);
     switch (type) {
-      case 'generator': {
-        const ToneGenerator = InputChain.defineGenerator(name);
-        if (!ToneGenerator) {
+      case 'instrument': {
+        const instrument = this._defineInstrument(id, name);
+        if (!instrument) {
           return;
         }
 
-        const toneGenerator = new ToneGenerator().toDestination();
         const event = new CustomEvent('trackupdated', {
           bubbles: true,
           composed: true,
           cancelable: true,
           detail: {
             id: this.track.id,
-            attributes: {
-              generators: [
-                ...this.track.generators,
-                toneGenerator,
-              ],
-            },
+            attributes: { instrument },
           },
         });
         this.dispatchEvent(event);
+        break;
       }
-      break;
 
       case 'effect': {
-        const ToneEffect = InputChain.defineEffect(name);
-        if (!ToneEffect) {
+        const effect = this._defineEffect(id, name);
+        if (!effect) {
           return;
         }
 
-        const toneEffect = new ToneEffect().toDestination();
         const event = new CustomEvent('trackupdated', {
           bubbles: true,
           composed: true,
@@ -178,26 +188,14 @@ export class InputChain extends LitElement {
             attributes: {
               effects: [
                 ...this.track.effects,
-                toneEffect,
+                effect,
               ],
             },
           },
         });
         this.dispatchEvent(event);
+        break;
       }
-      break;
-
-      case 'utility': {
-        switch (name) {
-          case 'analyser': {
-            
-          }
-          break;
-
-          default: break;
-        }
-      }
-      break;
 
       default: break;
     }
@@ -208,24 +206,22 @@ export class InputChain extends LitElement {
     this.track = selectedTrack;
   }
 
-  private _renderGenerator(generator: any, index: number) {
+  private _renderInstrument() {
+    if (!this.track.instrument) {
+      return null;
+    }
+
     return html`
-      <input-generator
-        generatorIndex=${index}
-        .generator=${generator}
-      ></input-generator>
+      <input-instrument .instrument=${this.track.instrument}></input-instrument>
     `;
   }
 
-  private _renderEffect(effect: any) {
+  private _renderEffect(effect: any, index: number) {
     return html`
-      <div class="input-chain__effect">${effect.name}</div>
-    `;
-  }
-
-  private _renderUtility(utility: any) {
-    return html`
-      <div class="input-chain__utility">${utility.name}</div>
+      <input-effect
+        effectIndex=${index}
+        .effect=${effect}
+      ></input-effect>
     `;
   }
 
@@ -236,16 +232,12 @@ export class InputChain extends LitElement {
           ${this.track.name}
         </div>
 
-        <div class="input-chain__generators">
-          ${this.track.generators.map(this._renderGenerator)}
+        <div class="input-chain__instrument">
+          ${this._renderInstrument()}
         </div>
 
         <div class="input-chain__effects">
           ${this.track.effects.map(this._renderEffect)}
-        </div>
-
-        <div class="input-chain__utilities">
-          ${this.track.utilities.map(this._renderUtility)}
         </div>
       </div>
     `;

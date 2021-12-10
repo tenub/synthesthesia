@@ -27,16 +27,17 @@ export class WebDAW extends LitElement {
 
   static override styles = css`
     :host {
-      --box-sizing: border-box;
-      --hsl-increment: 6.25%;
       --background-color-1: hsl(0, 0%, var(--hsl-increment));
       --background-color-2: hsl(0, 0%, calc(2 * var(--hsl-increment)));
       --background-color-3: hsl(0, 0%, calc(3 * var(--hsl-increment)));
       --background-color-4: hsl(0, 0%, calc(4 * var(--hsl-increment)));
       --background-color-5: hsl(0, 0%, calc(5 * var(--hsl-increment)));
+      --box-sizing: border-box;
+      --hsl-increment: 6.25%;
       --main-color: white;
       --main-font-family: 'Roboto Condensed', sans-serif;
       --main-font-size: 16px;
+      --size-increment: 4px;
 
       background-color: var(--background-color-2);
       box-sizing: var(--box-sizing);

@@ -12,8 +12,8 @@ import {
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
 import {
-  GeneratorRemovedEvent,
-} from './input-chain/input-generator/input.generator.interface';
+  EffectRemovedEvent,
+} from './input-chain/input-effect/input.effect.interface';
 import {
   MIDIInput,
   MIDIOutput,
@@ -85,7 +85,7 @@ export class TrackLanes extends LitElement {
     name: 'Track 1',
     inputId: null,
     outputId: null,
-    generators: [],
+    instrument: null,
     effects: [],
     utilities: [],
   }];
@@ -100,7 +100,8 @@ export class TrackLanes extends LitElement {
 
     this.addEventListener('trackselected', this._handleSelectTrack);
     this.addEventListener('trackupdated', this._handleUpdateTrack);
-    this.addEventListener('generatorremoved', this._handleRemoveGenerator);
+    this.addEventListener('instrumentremoved', this._handleRemoveInstrument);
+    this.addEventListener('effectremoved', this._handleRemoveEffect);
   }
 
   override willUpdate(changedProperties: Map<string, any>) {
@@ -117,7 +118,7 @@ export class TrackLanes extends LitElement {
         const frequency = TrackLanes.midiNumberToFrequency(note);
         const gain = velocity / 127;
         if (!prevNotes[key]) {
-          this._startGenerators(track.generators, { frequency, gain });
+          this._startInstrument(track.instrument, { frequency, gain });
         }
       });
 
@@ -125,73 +126,42 @@ export class TrackLanes extends LitElement {
         if (!notes[key]) {
           const note = Number(key);
           const frequency = TrackLanes.midiNumberToFrequency(note);
-          this._stopGenerators(track.generators, { frequency });
+          this._stopInstrument(track.instrument, { frequency });
         }
       });
     });
   }
 
-  private _startGenerators(
-    generators: any[],
+  private _startInstrument(
+    instrument: { id: string, name: string, toneInstrument: any },
     attributes: { frequency: number, gain: number },
   ) {
-    generators.forEach((generator: any) => {
-      switch (generator.name) {
-        case 'AMSynth':
-        case 'DuoSynth':
-        case 'FMSynth':
-        case 'MembraneSynth':
-        case 'MetalSynth':
-        case 'MonoSynth':
-        case 'PolySynth':
-        case 'Sampler':
-        case 'Synth':
-          generator.triggerAttack(attributes.frequency, 0, attributes.gain);
-          break;
-        case 'PluckSynth':
-          generator.triggerAttack(attributes.frequency);
-          break;
-        case 'NoiseSynth':
-          generator.triggerAttack(0, attributes.gain);
-          break;
-        default:
-          break;
-      }
-    });
+    switch (instrument.id) {
+      case 'synth':
+        instrument.toneInstrument.triggerAttack(attributes.frequency, 0, attributes.gain);
+        break;
+      default:
+        break;
+    }
   }
 
-  private _stopGenerators(
-    generators: any[],
+  private _stopInstrument(
+    instrument: { id: string, name: string, toneInstrument: any },
     attributes: { frequency: number },
   ) {
-    generators.forEach((generator: any) => {
-      switch (generator.name) {
-        case 'AMSynth':
-        case 'DuoSynth':
-        case 'FMSynth':
-        case 'MembraneSynth':
-        case 'MetalSynth':
-        case 'MonoSynth':
-        case 'NoiseSynth':
-        case 'PluckSynth':
-        case 'Synth':
-          generator.triggerRelease();
-          break;
-        case 'PolySynth':
-        case 'Sampler':
-          generator.triggerRelease(attributes.frequency);
-          break;
-        default:
-          break;
-      }
-    });
+    switch (instrument.id) {
+      case 'synth':
+      case 'sampler':
+        instrument.toneInstrument.triggerRelease(attributes.frequency);
+        break;
+      default:
+        break;
+    }
   }
 
-  private _handleRemoveGenerator = (event: GeneratorRemovedEvent) => {
-    const generatorIndex = event.detail;
-    const selectedTrack = this.tracks[this.selectedTrackIndex];
-    const updatedGenerators = selectedTrack.generators.slice();
-    updatedGenerators.splice(generatorIndex, 1);
+  private _handleRemoveInstrument = () => {
+    const tracks = this.tracks.slice();
+    const selectedTrack = tracks[this.selectedTrackIndex];
     this.dispatchEvent(new CustomEvent('trackupdated', {
       bubbles: true,
       composed: true,
@@ -199,7 +169,25 @@ export class TrackLanes extends LitElement {
       detail: {
         id: selectedTrack.id,
         attributes: {
-          generators: updatedGenerators,
+          instrument: null,
+        },
+      },
+    }));
+  }
+
+  private _handleRemoveEffect = (event: EffectRemovedEvent) => {
+    const tracks = this.tracks.slice();
+    const selectedTrack = tracks[this.selectedTrackIndex];
+    const effectIndex = event.detail;
+    const updatedEffects = selectedTrack.effects.splice(effectIndex, 1);
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: selectedTrack.id,
+        attributes: {
+          effects: updatedEffects,
         },
       },
     }));
@@ -212,7 +200,7 @@ export class TrackLanes extends LitElement {
       name: `Track ${newTrackId + 1}`,
       inputId: null,
       outputId: null,
-      generators: [],
+      instrument: null,
       effects: [],
       utilities: [],
     } as Track;
