@@ -91,9 +91,9 @@ export class TrackLane extends LitElement {
   @property({ type: Object })
   track: Track;
 
-  trackLabelRef = createRef<HTMLDivElement>();
+  _trackLabelRef = createRef<HTMLDivElement>();
 
-  trackMidiInputRef = createRef<HTMLSelectElement>();
+  _trackMidiInputRef = createRef<HTMLSelectElement>();
 
   private _dispatchSelectTrack = () => {
     const detail = this.track.id;
@@ -118,19 +118,19 @@ export class TrackLane extends LitElement {
   }
 
   private _updateTrackName = () => {
-    const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
+    const trackLabel = this._trackLabelRef.value! as HTMLInputElement;
     const newTrackName = trackLabel.value;
     this._dispatchUpdateTrack({ name: newTrackName });
   }
 
   private _updateTrackInput = () => {
-    const midiInput = this.trackMidiInputRef.value! as HTMLSelectElement;
+    const midiInput = this._trackMidiInputRef.value! as HTMLSelectElement;
     const newTrackInputId = midiInput.value;
     this._dispatchUpdateTrack({ inputId: newTrackInputId });
   }
 
   private _selectTrackLabel = () => {
-    const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
+    const trackLabel = this._trackLabelRef.value! as HTMLInputElement;
     trackLabel.select();
   }
 
@@ -140,7 +140,7 @@ export class TrackLane extends LitElement {
       return;
     }
 
-    const trackLabel = this.trackLabelRef.value! as HTMLInputElement;
+    const trackLabel = this._trackLabelRef.value! as HTMLInputElement;
     trackLabel.blur();
   }
 
@@ -163,7 +163,7 @@ export class TrackLane extends LitElement {
       >
         <div class="track__controls">
           <textarea
-            ${ref(this.trackLabelRef)}
+            ${ref(this._trackLabelRef)}
             class="track__label"
             .value=${this.track.name}
             @focus=${this._selectTrackLabel}
@@ -174,7 +174,7 @@ export class TrackLane extends LitElement {
 
         <div class="track__midi">
           <select
-            ${ref(this.trackMidiInputRef)}
+            ${ref(this._trackMidiInputRef)}
             class="track__midi-input"
             @change=${this._updateTrackInput}
           >

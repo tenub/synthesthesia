@@ -93,7 +93,7 @@ export class TrackLanes extends LitElement {
   @state()
   selectedTrackIndex = 0;
 
-  trackLanesRef = createRef<HTMLDivElement>();
+  _trackLanesRef = createRef<HTMLDivElement>();
 
   constructor() {
     super();
@@ -136,6 +136,10 @@ export class TrackLanes extends LitElement {
     instrument: { id: string, name: string, toneInstrument: any },
     attributes: { frequency: number, gain: number },
   ) {
+    if (!instrument) {
+      return;
+    }
+
     switch (instrument.id) {
       case 'synth':
         instrument.toneInstrument.triggerAttack(attributes.frequency, 0, attributes.gain);
@@ -149,6 +153,10 @@ export class TrackLanes extends LitElement {
     instrument: { id: string, name: string, toneInstrument: any },
     attributes: { frequency: number },
   ) {
+    if (!instrument) {
+      return;
+    }
+
     switch (instrument.id) {
       case 'synth':
       case 'sampler':
@@ -210,7 +218,7 @@ export class TrackLanes extends LitElement {
     ];
 
     setTimeout(() => {
-      const trackLane = this.trackLanesRef.value!;
+      const trackLane = this._trackLanesRef.value!;
       trackLane.scrollTop = trackLane.offsetHeight;
     });
   }
@@ -253,7 +261,7 @@ export class TrackLanes extends LitElement {
     return html`
       <div
         class="track-lanes"
-        ${ref(this.trackLanesRef)}
+        ${ref(this._trackLanesRef)}
       >
         ${this.tracks.map(this._renderTrack)}
 

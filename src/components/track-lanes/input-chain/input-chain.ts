@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { ref, createRef } from 'lit/directives/ref.js';
 import * as Tone from 'tone';
 
 import { Track } from '../track-lane/track-lane.interface';
@@ -51,7 +52,6 @@ export class InputChain extends LitElement {
       border-radius: 0.5em;
       box-shadow: inset 0 1px 0.25em var(--background-color-1);
       display: flex;
-      flex-direction: column;
       gap: 0.5em;
       height: 100%;
       min-width: 64px;
@@ -76,6 +76,10 @@ export class InputChain extends LitElement {
 
   @property({ type: Object })
   track: Track;
+
+  _instrumentRef = createRef<HTMLDivElement>();
+
+  _effectsRef = createRef<HTMLDivElement>();
 
   constructor() {
     super();
@@ -148,6 +152,15 @@ export class InputChain extends LitElement {
   private _allowDrop = (event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+
+    const effectsContainer = this._effectsRef.value!;
+    [...effectsContainer.children].forEach((child) => {
+      const childElement = child as HTMLElement;
+      const diffX = event.offsetX - childElement.offsetLeft;
+      if (diffX > childElement.offsetWidth / 2) {
+        //
+      }
+    });
   }
 
   private _handleDrop = (event: DragEvent) => {
@@ -232,11 +245,17 @@ export class InputChain extends LitElement {
           ${this.track.name}
         </div>
 
-        <div class="input-chain__instrument">
+        <div
+          ${ref(this._instrumentRef)}
+          class="input-chain__instrument"
+        >
           ${this._renderInstrument()}
         </div>
 
-        <div class="input-chain__effects">
+        <div
+          ${ref(this._effectsRef)}
+          class="input-chain__effects"
+        >
           ${this.track.effects.map(this._renderEffect)}
         </div>
       </div>

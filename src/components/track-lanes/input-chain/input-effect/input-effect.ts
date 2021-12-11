@@ -26,6 +26,7 @@ export class InputEffect extends LitElement {
 
     .input-chain__effect {
       background-color: var(--background-color-2);
+      height: 100%;
       margin: 0 0.5em;
       padding: 0.5em 2em;
       user-select: none;
@@ -82,11 +83,12 @@ export class InputEffect extends LitElement {
   }
 
   private _renderReverbControls() {
+    const { decay, wet } = this.effect.toneEffect.get();
     return html`
       <control-knob
         size="medium"
         name="decay"
-        value="1"
+        value=${decay}
         min="0"
         max="60"
         step="0.001"
@@ -97,7 +99,7 @@ export class InputEffect extends LitElement {
       <control-knob
         size="medium"
         name="wet"
-        value="0.5"
+        value=${wet}
         min="0"
         max="1"
         step="0.001"

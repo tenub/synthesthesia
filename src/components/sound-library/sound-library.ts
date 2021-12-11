@@ -113,10 +113,10 @@ export class SoundLibrary extends LitElement {
   @state()
   itemFilter: string = '';
 
-  itemFilterRef = createRef<HTMLInputElement>();
+  _itemFilterRef = createRef<HTMLInputElement>();
 
   private _setItemFilter = () => {
-    const { value } = this.itemFilterRef.value! as HTMLInputElement;
+    const { value } = this._itemFilterRef.value! as HTMLInputElement;
     this.itemFilter = value;
   }
 
@@ -153,7 +153,7 @@ export class SoundLibrary extends LitElement {
     return html`
       <section class="sound-library">
         <input
-          ${ref(this.itemFilterRef)}
+          ${ref(this._itemFilterRef)}
           class="sound-library__filter"
           placeholder="Search"
           type="search"

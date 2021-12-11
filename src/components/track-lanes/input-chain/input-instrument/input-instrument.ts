@@ -26,6 +26,7 @@ export class InputInstrument extends LitElement {
 
     .input-chain__instrument {
       background-color: var(--background-color-2);
+      height: 100%;
       margin: 0 0.5em;
       padding: 0.5em 2em;
       user-select: none;
