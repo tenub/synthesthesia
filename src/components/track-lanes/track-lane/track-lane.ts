@@ -125,8 +125,8 @@ export class TrackLane extends LitElement {
 
   private _updateTrackInput = () => {
     const midiInput = this._trackMidiInputRef.value! as HTMLSelectElement;
-    const newTrackInputId = midiInput.value;
-    this._dispatchUpdateTrack({ inputId: newTrackInputId });
+    const newTrackMidiInputId = midiInput.value;
+    this._dispatchUpdateTrack({ midiInputId: newTrackMidiInputId });
   }
 
   private _selectTrackLabel = () => {

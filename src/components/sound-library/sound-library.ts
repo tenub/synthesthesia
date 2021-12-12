@@ -37,9 +37,7 @@ export class SoundLibrary extends LitElement {
     { id: 'compressor', name: 'Compressor', type: 'effect' },
     { id: 'eq3', name: 'EQ3', type: 'effect' },
     { id: 'limiter', name: 'Limiter', type: 'effect' },
-  ]
 
-  static utilities: SoundLibraryItem[] = [
     { id: 'analyser', name: 'Analyser', type: 'utility' },
   ]
 
@@ -171,12 +169,6 @@ export class SoundLibrary extends LitElement {
             <h1>Effects</h1>
             <ul class="sound-library__items">
               ${SoundLibrary.effects.reduce(this._filterAndRenderItems, [])}
-            </ul>
-          </li>
-          <li>
-            <h1>Utilities</h1>
-            <ul class="sound-library__items">
-              ${SoundLibrary.utilities.reduce(this._filterAndRenderItems, [])}
             </ul>
           </li>
         </ul>

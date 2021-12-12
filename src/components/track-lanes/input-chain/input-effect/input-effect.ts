@@ -76,11 +76,40 @@ export class InputEffect extends LitElement {
 
   private _renderControls() {
     switch (this.effect.id) {
+      case 'distortion':
+        return this._renderDistortionControls();
       case 'reverb':
         return this._renderReverbControls();
       default:
         return html``;
     }
+  }
+
+  private _renderDistortionControls() {
+    const { distortion, wet } = this.effect.toneEffect.get();
+    return html`
+      <control-knob
+        size="medium"
+        name="distortion"
+        value=${distortion}
+        min="0"
+        max="1"
+        step="0.001"
+      >
+        Distortion
+      </control-knob>
+
+      <control-knob
+        size="medium"
+        name="wet"
+        value=${wet}
+        min="0"
+        max="1"
+        step="0.001"
+      >
+        Wet
+      </control-knob>
+    `;
   }
 
   private _renderReverbControls() {

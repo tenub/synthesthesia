@@ -1,11 +1,25 @@
+import * as Tone from 'tone';
+
 export interface Track {
   id: number,
   name: string,
-  inputId: string,
-  outputId: string,
-  instrument: any,
-  effects: any[],
-  utilities: any[]
+  midiInputId: string,
+  midiOutputId: string,
+  channel: Tone.Channel,
+  instrument: TrackInstrument,
+  effects: TrackEffect[],
+}
+
+export interface TrackInstrument {
+  id: string,
+  name: string,
+  toneInstrument: any,
+}
+
+export interface TrackEffect {
+  id: string,
+  name: string,
+  toneEffect: any,
 }
 
 export interface TrackSelectedEvent extends CustomEvent {
@@ -17,11 +31,11 @@ export interface TrackUpdatedEvent extends CustomEvent {
     id: number,
     attributes: {
       name?: string,
-      inputId?: string,
-      outputId?: string,
+      midiInputId?: string,
+      midiOutputId?: string,
+      channel?: any,
       instrument?: any,
       effects?: any[],
-      utilities?: any[],
     },
   },
 }

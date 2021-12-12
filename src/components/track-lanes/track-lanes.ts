@@ -9,6 +9,8 @@ import './track-lane';
 
 import {
   Track,
+  TrackInstrument,
+  TrackEffect,
   TrackSelectedEvent,
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
@@ -89,11 +91,11 @@ export class TrackLanes extends LitElement {
   tracks: Track[] = [{
     id: 0,
     name: 'Track 1',
-    inputId: null,
-    outputId: null,
+    midiInputId: null,
+    midiOutputId: null,
+    channel: null,
     instrument: null,
     effects: [],
-    utilities: [],
   }];
 
   @state()
@@ -115,12 +117,12 @@ export class TrackLanes extends LitElement {
   override willUpdate(changedProperties: Map<string, any>) {
     const prevMidiNotes = changedProperties.get('midiNotes') ?? {};
     this.tracks.forEach((track: Track) => {
-      if (!track.inputId) {
+      if (!track.midiInputId) {
         return;
       }
 
-      const prevNotes = prevMidiNotes[track.inputId] ?? {};
-      const notes = this.midiNotes[track.inputId] ?? {};
+      const prevNotes = prevMidiNotes[track.midiInputId] ?? {};
+      const notes = this.midiNotes[track.midiInputId] ?? {};
       Object.entries(notes).forEach(([key, velocity]) => {
         const note = Number(key);
         const frequency = TrackLanes.midiNumberToFrequency(note);
@@ -141,7 +143,7 @@ export class TrackLanes extends LitElement {
   }
 
   private _startInstrument(
-    instrument: { id: string, name: string, toneInstrument: any },
+    instrument: TrackInstrument,
     attributes: { frequency: number, gain: number },
   ) {
     if (!instrument) {
@@ -158,7 +160,7 @@ export class TrackLanes extends LitElement {
   }
 
   private _stopInstrument(
-    instrument: { id: string, name: string, toneInstrument: any },
+    instrument: TrackInstrument,
     attributes: { frequency: number },
   ) {
     if (!instrument) {
@@ -283,11 +285,11 @@ export class TrackLanes extends LitElement {
     const newTrack = {
       id: newTrackId,
       name: `Track ${newTrackId + 1}`,
-      inputId: null,
-      outputId: null,
+      midiInputId: null,
+      midiOutputId: null,
+      channel: null,
       instrument: null,
       effects: [],
-      utilities: [],
     } as Track;
     this.tracks = [
       ...this.tracks,

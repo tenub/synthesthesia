@@ -45,8 +45,7 @@ export class InputChain extends LitElement {
     }
 
     .input-chain__instrument,
-    .input-chain__effects,
-    .input-chain__utilities {
+    .input-chain__effects {
       background-color: var(--background-color-3);
       border-top: 1px solid var(--background-color-1);
       border-radius: 0.5em;
@@ -68,9 +67,12 @@ export class InputChain extends LitElement {
       grid-row: 2 / 2;
     }
 
-    .input-chain__utilities {
-      grid-column: 3 / 3;
-      grid-row: 2 / 2;
+    .input-chain__effect-placeholder {
+      background-color: red;
+      border-radius: 1px;
+      height: calc(100% - --size-increment);
+      margin: 0 var(--size-increment);
+      width: 2px;
     }
   `;
 
@@ -78,7 +80,7 @@ export class InputChain extends LitElement {
   track: Track;
 
   @state()
-  _closestDropIndex = 0;
+  _closestDropIndex = -1;
 
   _instrumentRef = createRef<HTMLDivElement>();
 
@@ -87,7 +89,9 @@ export class InputChain extends LitElement {
   constructor() {
     super();
 
-    this.addEventListener('dragover', this._allowDrop);
+    this.addEventListener('dragover', this._handleDragOver);
+    this.addEventListener('dragend', this._handleDragEnded);
+    this.addEventListener('dragleave', this._handleDragEnded);
     this.addEventListener('drop', this._handleDrop);
     this.addEventListener('trackselected', this._handleTrackSelected);
   }
@@ -117,14 +121,19 @@ export class InputChain extends LitElement {
   private _defineEffect(id: string, name: string): any {
     let toneEffect;
     switch (id) {
-      case 'reverb': {
+      case 'distortion':
+        toneEffect = new Tone.Distortion({
+          distortion: 0,
+          wet: 0.5,
+        });
+        break;
+
+      case 'reverb':
         toneEffect = new Tone.Reverb({
           decay: 10,
           wet: 0.5,
         });
-
         break;
-      }
 
       default:
         return;
@@ -137,7 +146,7 @@ export class InputChain extends LitElement {
     };
   }
 
-  private _allowDrop = (event: DragEvent) => {
+  private _handleDragOver = (event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
 
@@ -153,12 +162,15 @@ export class InputChain extends LitElement {
       const midElementX = effectElement.offsetLeft + effectElement.offsetWidth / 2;
       const diffX =  event.offsetX - midElementX;
       const diffXMagnitude = Math.abs(diffX);
-      if (typeof closestDiffX === 'undefined' || diffXMagnitude < closestDiffX) {
+      const isFirstElement = typeof closestDiffX === 'undefined';
+      if (isFirstElement || diffXMagnitude < closestDiffX) {
         closestDiffX = diffXMagnitude;
         closestIndex = index;
       }
 
-      return diffX < 0 ? closestIndex : closestIndex + 1;
+      return (isFirstElement || (!isFirstElement && diffX < 0))
+        ? closestIndex
+        : closestIndex + 1;
     }, 0);
 
     this._closestDropIndex = closestDropIndex;
@@ -207,6 +219,12 @@ export class InputChain extends LitElement {
 
       default: break;
     }
+
+    this._closestDropIndex = -1;
+  }
+
+  private _handleDragEnded = (event: DragEvent) => {
+    this._closestDropIndex = -1;
   }
 
   private _handleTrackSelected = (event: CustomEvent) => {
@@ -225,6 +243,12 @@ export class InputChain extends LitElement {
   }
 
   private _renderEffect(effect: any, index: number) {
+    if (effect.id === 'effect-placeholder') {
+      return html`
+        <div class="input-chain__effect-placeholder"></div>
+      `;
+    }
+
     return html`
       <input-effect
         effectIndex=${index}
@@ -234,6 +258,15 @@ export class InputChain extends LitElement {
   }
 
   override render() {
+    const effects = this.track.effects.slice();
+    if (this._closestDropIndex > -1) {
+      effects.splice(this._closestDropIndex, 0, {
+        id: 'effect-placeholder',
+        name: 'Effect Placeholder',
+        toneEffect: null,
+      });
+    }
+
     return html`
       <div class="input-chain">
         <div class="input-chain__label">
@@ -251,7 +284,7 @@ export class InputChain extends LitElement {
           ${ref(this._effectsRef)}
           class="input-chain__effects"
         >
-          ${this.track.effects.map(this._renderEffect)}
+          ${effects.map(this._renderEffect)}
         </div>
       </div>
     `;
