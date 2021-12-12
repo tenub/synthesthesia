@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 import * as Tone from 'tone';
 
@@ -77,6 +77,9 @@ export class InputChain extends LitElement {
   @property({ type: Object })
   track: Track;
 
+  @state()
+  _closestDropIndex = 0;
+
   _instrumentRef = createRef<HTMLDivElement>();
 
   _effectsRef = createRef<HTMLDivElement>();
@@ -90,23 +93,15 @@ export class InputChain extends LitElement {
   }
 
   private _defineInstrument(id: string, name: string): any {
-    const [firstEffect] = this.track.effects;
-
     let toneInstrument;
     switch (id) {
       case 'synth': {
         toneInstrument = new Tone.PolySynth();
 
-        if (firstEffect) {
-          toneInstrument.disconnect().connect(firstEffect.toneEffect);
-        } else {
-          toneInstrument.toDestination();
-        }
-
         break;
       }
       case 'sampler':
-        toneInstrument = new Tone.Sampler().toDestination();
+        toneInstrument = new Tone.Sampler();
         break;
       default:
         return;
@@ -115,25 +110,18 @@ export class InputChain extends LitElement {
     return {
       id,
       name,
-      generators: [],
       toneInstrument,
     };
   }
 
   private _defineEffect(id: string, name: string): any {
-    const instrument = this.track.instrument;
-
     let toneEffect;
     switch (id) {
       case 'reverb': {
         toneEffect = new Tone.Reverb({
           decay: 10,
           wet: 0.5,
-        }).toDestination();
-
-        if (instrument) {
-          instrument.toneInstrument.disconnect().connect(toneEffect);
-        }
+        });
 
         break;
       }
@@ -153,14 +141,27 @@ export class InputChain extends LitElement {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
 
+    let closestDiffX;
+
     const effectsContainer = this._effectsRef.value!;
-    [...effectsContainer.children].forEach((child) => {
-      const childElement = child as HTMLElement;
-      const diffX = event.offsetX - childElement.offsetLeft;
-      if (diffX > childElement.offsetWidth / 2) {
-        //
+    const closestDropIndex = [...effectsContainer.children].reduce((
+      closestIndex,
+      element,
+      index,
+    ) => {
+      const effectElement = element as HTMLElement;
+      const midElementX = effectElement.offsetLeft + effectElement.offsetWidth / 2;
+      const diffX =  event.offsetX - midElementX;
+      const diffXMagnitude = Math.abs(diffX);
+      if (typeof closestDiffX === 'undefined' || diffXMagnitude < closestDiffX) {
+        closestDiffX = diffXMagnitude;
+        closestIndex = index;
       }
-    });
+
+      return diffX < 0 ? closestIndex : closestIndex + 1;
+    }, 0);
+
+    this._closestDropIndex = closestDropIndex;
   }
 
   private _handleDrop = (event: DragEvent) => {
@@ -173,13 +174,12 @@ export class InputChain extends LitElement {
           return;
         }
 
-        const event = new CustomEvent('trackupdated', {
+        const event = new CustomEvent('instrumentadded', {
           bubbles: true,
           composed: true,
           cancelable: true,
           detail: {
-            id: this.track.id,
-            attributes: { instrument },
+            instrument,
           },
         });
         this.dispatchEvent(event);
@@ -192,18 +192,13 @@ export class InputChain extends LitElement {
           return;
         }
 
-        const event = new CustomEvent('trackupdated', {
+        const event = new CustomEvent('effectadded', {
           bubbles: true,
           composed: true,
           cancelable: true,
           detail: {
-            id: this.track.id,
-            attributes: {
-              effects: [
-                ...this.track.effects,
-                effect,
-              ],
-            },
+            index: this._closestDropIndex,
+            effect,
           },
         });
         this.dispatchEvent(event);

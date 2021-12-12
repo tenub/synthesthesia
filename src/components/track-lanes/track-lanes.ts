@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
+import * as Tone from 'tone';
 
 import '../shared/custom-icon';
 import './input-chain';
@@ -12,8 +13,13 @@ import {
   TrackUpdatedEvent,
 } from './track-lane/track-lane.interface';
 import {
-  EffectRemovedEvent,
-} from './input-chain/input-effect/input.effect.interface';
+  AddInstrumentEvent,
+  RemoveInstrumentEvent,
+} from './input-chain/input-instrument/input-instrument.interface';
+import {
+  AddEffectEvent,
+  RemoveEffectEvent,
+} from './input-chain/input-effect/input-effect.interface';
 import {
   MIDIInput,
   MIDIOutput,
@@ -100,7 +106,9 @@ export class TrackLanes extends LitElement {
 
     this.addEventListener('trackselected', this._handleSelectTrack);
     this.addEventListener('trackupdated', this._handleUpdateTrack);
+    this.addEventListener('instrumentadded', this._handleAddInstrument);
     this.addEventListener('instrumentremoved', this._handleRemoveInstrument);
+    this.addEventListener('effectadded', this._handleAddEffect);
     this.addEventListener('effectremoved', this._handleRemoveEffect);
   }
 
@@ -117,7 +125,7 @@ export class TrackLanes extends LitElement {
         const note = Number(key);
         const frequency = TrackLanes.midiNumberToFrequency(note);
         const gain = velocity / 127;
-        if (!prevNotes[key]) {
+        if (!prevNotes[key] ) {
           this._startInstrument(track.instrument, { frequency, gain });
         }
       });
@@ -167,9 +175,35 @@ export class TrackLanes extends LitElement {
     }
   }
 
-  private _handleRemoveInstrument = () => {
+  private _handleAddInstrument = (event: AddInstrumentEvent) => {
+    const { instrument: instrumentToAdd } = event.detail;
     const tracks = this.tracks.slice();
     const selectedTrack = tracks[this.selectedTrackIndex];
+    const { instrument: instrumentToRemove } = selectedTrack;
+
+    if (instrumentToRemove) {
+      instrumentToRemove.toneInstrument.dispose();
+    }
+
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: selectedTrack.id,
+        attributes: {
+          instrument: instrumentToAdd,
+        },
+      },
+    }));
+  }
+
+  private _handleRemoveInstrument = (event: RemoveInstrumentEvent) => {
+    const tracks = this.tracks.slice();
+    const selectedTrack = tracks[this.selectedTrackIndex];
+    const instrumentToRemove = selectedTrack.instrument;
+    instrumentToRemove.toneInstrument.dispose();
+
     this.dispatchEvent(new CustomEvent('trackupdated', {
       bubbles: true,
       composed: true,
@@ -183,11 +217,13 @@ export class TrackLanes extends LitElement {
     }));
   }
 
-  private _handleRemoveEffect = (event: EffectRemovedEvent) => {
+  private _handleAddEffect = (event: AddEffectEvent) => {
+    const { index: effectToAddIndex, effect: effectToAdd } = event.detail;
     const tracks = this.tracks.slice();
     const selectedTrack = tracks[this.selectedTrackIndex];
-    const effectIndex = event.detail;
-    const updatedEffects = selectedTrack.effects.splice(effectIndex, 1);
+    const { effects } = selectedTrack;
+    effects.splice(effectToAddIndex, 0, effectToAdd);
+
     this.dispatchEvent(new CustomEvent('trackupdated', {
       bubbles: true,
       composed: true,
@@ -195,10 +231,51 @@ export class TrackLanes extends LitElement {
       detail: {
         id: selectedTrack.id,
         attributes: {
-          effects: updatedEffects,
+          effects,
         },
       },
     }));
+  }
+
+  private _handleRemoveEffect = (event: RemoveEffectEvent) => {
+    const { index: effectIndex } = event.detail;
+    const tracks = this.tracks.slice();
+    const selectedTrack = tracks[this.selectedTrackIndex];
+    const { effects } = selectedTrack;
+    const effectToRemove = effects[effectIndex];
+    effectToRemove.toneEffect.dispose();
+    effects.splice(effectIndex, 1);
+
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: selectedTrack.id,
+        attributes: {
+          effects,
+        },
+      },
+    }));
+  }
+
+  private _validateAudioChain() {
+    const tracks = this.tracks.slice();
+    const selectedTrack = tracks[this.selectedTrackIndex];
+    const { instrument, effects } = selectedTrack;
+
+    let toneEffects = [];
+    effects.forEach((effect) => {
+      effect.toneEffect.disconnect();
+      toneEffects.push(effect.toneEffect);
+    });
+
+    if (instrument && effects.length === 0) {
+      instrument.toneInstrument.toDestination();
+    } else if (instrument && effects.length > 0) {
+      instrument.toneInstrument.disconnect().chain(...toneEffects);
+      toneEffects[effects.length - 1].toDestination();
+    }
   }
 
   private _addTrack = () => {
@@ -244,6 +321,8 @@ export class TrackLanes extends LitElement {
     const trackToUpdate = updatedTracks[trackIndex];
     updatedTracks[trackIndex] = { ...trackToUpdate, ...attributes };
     this.tracks = updatedTracks;
+
+    this._validateAudioChain();
   }
 
   private _renderTrack = (track: Track) => {

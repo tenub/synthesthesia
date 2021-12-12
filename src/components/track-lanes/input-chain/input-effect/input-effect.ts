@@ -5,7 +5,7 @@ import { createAttributeUpdate } from '../../../../helpers/helpers';
 
 import '../../../shared/control-knob';
 
-import { KnobValueChangedEvent } from './input.effect.interface';
+import { KnobValueChangedEvent } from './input-effect.interface';
 
 @customElement('input-effect')
 export class InputEffect extends LitElement {
@@ -57,12 +57,13 @@ export class InputEffect extends LitElement {
   }
 
   private _dispatchRemoveEffect = () => {
-    const detail = this.effectIndex;
     const event = new CustomEvent('effectremoved', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail,
+      detail: {
+        index: this.effectIndex,
+      },
     });
     this.dispatchEvent(event);
   }
