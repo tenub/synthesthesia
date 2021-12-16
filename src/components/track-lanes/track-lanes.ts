@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
+import { classMap } from 'lit/directives/class-map.js';
 import * as Tone from 'tone';
 
 import '../shared/custom-icon';
@@ -13,20 +14,20 @@ import {
   TrackEffect,
   TrackSelectedEvent,
   TrackUpdatedEvent,
-} from './track-lane/track-lane.interface';
+} from './track-lane/track-lane.d';
 import {
   AddInstrumentEvent,
   RemoveInstrumentEvent,
-} from './input-chain/input-instrument/input-instrument.interface';
+} from './input-chain/input-instrument/input-instrument.d';
 import {
   AddEffectEvent,
   RemoveEffectEvent,
-} from './input-chain/input-effect/input-effect.interface';
+} from './input-chain/input-effect/input-effect.d';
 import {
   MIDIInput,
   MIDIOutput,
   MIDINoteInput,
-} from '../../web-daw/web-daw.interface';
+} from '../../web-daw/web-daw.d';
 
 @customElement('track-lanes')
 export class TrackLanes extends LitElement {
@@ -63,6 +64,18 @@ export class TrackLanes extends LitElement {
 
     .track-lanes {
       overflow: auto;
+
+    }
+
+    .track-lanes--empty {
+      align-items: center;
+      display: flex;
+      justify-content: center;
+    }
+
+    .track-lanes--empty .add-track {
+      color: grey;
+      font-size: 2em;
     }
 
     .add-track {
@@ -88,15 +101,7 @@ export class TrackLanes extends LitElement {
   midiNotes: MIDINoteInput;
 
   @state()
-  tracks: Track[] = [{
-    id: 0,
-    name: 'Track 1',
-    midiInputId: null,
-    midiOutputId: null,
-    channel: null,
-    instrument: null,
-    effects: [],
-  }];
+  tracks: Track[] = [];
 
   @state()
   selectedTrackIndex = 0;
@@ -179,115 +184,76 @@ export class TrackLanes extends LitElement {
 
   private _handleAddInstrument = (event: AddInstrumentEvent) => {
     const { instrument: instrumentToAdd } = event.detail;
-    const tracks = this.tracks.slice();
-    const selectedTrack = tracks[this.selectedTrackIndex];
-    const { instrument: instrumentToRemove } = selectedTrack;
+    const updatedTracks = this.tracks.slice();
 
-    if (instrumentToRemove) {
-      instrumentToRemove.toneInstrument.dispose();
+    if (updatedTracks[this.selectedTrackIndex].instrument) {
+      updatedTracks[this.selectedTrackIndex].instrument.toneInstrument.dispose();
     }
 
-    this.dispatchEvent(new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: selectedTrack.id,
-        attributes: {
-          instrument: instrumentToAdd,
-        },
-      },
-    }));
+    updatedTracks[this.selectedTrackIndex].instrument = instrumentToAdd;
+    this.tracks = updatedTracks;
+
+    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    this._validateAudioChain(selectedTrack);
   }
 
   private _handleRemoveInstrument = (event: RemoveInstrumentEvent) => {
-    const tracks = this.tracks.slice();
-    const selectedTrack = tracks[this.selectedTrackIndex];
-    const instrumentToRemove = selectedTrack.instrument;
-    instrumentToRemove.toneInstrument.dispose();
+    const updatedTracks = this.tracks.slice();
+    updatedTracks[this.selectedTrackIndex].instrument.toneInstrument.dispose();
+    updatedTracks[this.selectedTrackIndex].instrument = null;
+    this.tracks = updatedTracks;
 
-    this.dispatchEvent(new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: selectedTrack.id,
-        attributes: {
-          instrument: null,
-        },
-      },
-    }));
+    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    this._validateAudioChain(selectedTrack);
   }
 
   private _handleAddEffect = (event: AddEffectEvent) => {
     const { index: effectToAddIndex, effect: effectToAdd } = event.detail;
-    const tracks = this.tracks.slice();
-    const selectedTrack = tracks[this.selectedTrackIndex];
-    const { effects } = selectedTrack;
-    effects.splice(effectToAddIndex, 0, effectToAdd);
+    const updatedTracks = this.tracks.slice();
+    updatedTracks[this.selectedTrackIndex].effects.splice(effectToAddIndex, 0, effectToAdd);
+    this.tracks = updatedTracks;
 
-    this.dispatchEvent(new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: selectedTrack.id,
-        attributes: {
-          effects,
-        },
-      },
-    }));
+    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    this._validateAudioChain(selectedTrack);
   }
 
   private _handleRemoveEffect = (event: RemoveEffectEvent) => {
     const { index: effectIndex } = event.detail;
-    const tracks = this.tracks.slice();
-    const selectedTrack = tracks[this.selectedTrackIndex];
-    const { effects } = selectedTrack;
-    const effectToRemove = effects[effectIndex];
-    effectToRemove.toneEffect.dispose();
-    effects.splice(effectIndex, 1);
+    const updatedTracks = this.tracks.slice();
+    updatedTracks[this.selectedTrackIndex].effects[effectIndex].toneEffect.dispose();
+    updatedTracks[this.selectedTrackIndex].effects.splice(effectIndex, 1);
+    this.tracks = updatedTracks;
 
-    this.dispatchEvent(new CustomEvent('trackupdated', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        id: selectedTrack.id,
-        attributes: {
-          effects,
-        },
-      },
-    }));
+    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    this._validateAudioChain(selectedTrack);
   }
 
-  private _validateAudioChain() {
-    const tracks = this.tracks.slice();
-    const selectedTrack = tracks[this.selectedTrackIndex];
-    const { instrument, effects } = selectedTrack;
+  private _validateAudioChain(track: Track) {
+    const { channel, instrument, effects } = track;
 
-    let toneEffects = [];
+    const toneEffects = [];
     effects.forEach((effect) => {
       effect.toneEffect.disconnect();
       toneEffects.push(effect.toneEffect);
     });
 
     if (instrument && effects.length === 0) {
-      instrument.toneInstrument.toDestination();
+      instrument.toneInstrument.disconnect().connect(channel);
     } else if (instrument && effects.length > 0) {
-      instrument.toneInstrument.disconnect().chain(...toneEffects);
-      toneEffects[effects.length - 1].toDestination();
+      instrument.toneInstrument.disconnect().chain(...toneEffects, channel);
     }
   }
 
   private _addTrack = () => {
     const newTrackId = this.tracks.length;
+    const newTrackName = `Track ${newTrackId + 1}`;
+    const newTrackChannel = new Tone.Channel().toDestination();
     const newTrack = {
       id: newTrackId,
-      name: `Track ${newTrackId + 1}`,
+      name: newTrackName,
       midiInputId: null,
       midiOutputId: null,
-      channel: null,
+      channel: newTrackChannel,
       instrument: null,
       effects: [],
     } as Track;
@@ -323,8 +289,6 @@ export class TrackLanes extends LitElement {
     const trackToUpdate = updatedTracks[trackIndex];
     updatedTracks[trackIndex] = { ...trackToUpdate, ...attributes };
     this.tracks = updatedTracks;
-
-    this._validateAudioChain();
   }
 
   private _renderTrack = (track: Track) => {
@@ -337,11 +301,28 @@ export class TrackLanes extends LitElement {
     `;
   }
 
-  override render() {
+  private _renderInputChain() {
     const selectedTrack = this.tracks[this.selectedTrackIndex];
+    if (!selectedTrack) {
+      return null;
+    }
+
+    return html`
+      <input-chain .track=${selectedTrack}></input-chain>
+    `;
+  }
+
+  override render() {
+    const trackCount = this.tracks.length;
+    const isTracksEmpty = trackCount === 0;
+    const trackLaneClasses = {
+      'track-lanes': true,
+      'track-lanes--empty': isTracksEmpty,
+    };
+
     return html`
       <div
-        class="track-lanes"
+        class=${classMap(trackLaneClasses)}
         ${ref(this._trackLanesRef)}
       >
         ${this.tracks.map(this._renderTrack)}
@@ -350,12 +331,12 @@ export class TrackLanes extends LitElement {
           class="add-track"
           @click=${this._addTrack}
         >
-          <custom-icon>add</custom-icon>
+          <custom-icon size=${isTracksEmpty ? 'huge' : 'medium'}>add</custom-icon>
           Add Track
         </button>
       </div>
 
-      <input-chain .track=${selectedTrack}></input-chain>
+      ${this._renderInputChain()}
     `;
   }
 }

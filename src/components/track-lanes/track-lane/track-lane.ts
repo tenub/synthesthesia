@@ -1,12 +1,13 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
-
+import * as Tone from 'tone';
 
 import '../../shared/custom-icon';
+import '../../shared/input-meter';
 
-import { MIDIInput, MIDIOutput } from '../../../web-daw/web-daw.interface';
-import { Track } from './track-lane.interface';
+import { MIDIInput, MIDIOutput } from '../../../web-daw/web-daw.d';
+import { Track } from './track-lane.d';
 
 @customElement('track-lane')
 export class TrackLane extends LitElement {
@@ -80,6 +81,11 @@ export class TrackLane extends LitElement {
     .track__midi-input option {
       color: black;
     }
+
+    .track__output {
+      background-color: var(--background-color-4);
+      padding: 0.5em 1em;
+    }
   `;
 
   @property({ type: Array })
@@ -91,9 +97,39 @@ export class TrackLane extends LitElement {
   @property({ type: Object })
   track: Track;
 
+  @state()
+  meter = null;
+
+  @state()
+  channelVolume = [-Infinity, -Infinity];
+
   _trackLabelRef = createRef<HTMLDivElement>();
 
   _trackMidiInputRef = createRef<HTMLSelectElement>();
+
+  override connectedCallback() {
+    super.connectedCallback();
+
+    this.meter = new Tone.Meter({
+      channels: 2,
+      normalRange: true,
+    });
+    this.track.channel.connect(this.meter);
+
+    window.requestAnimationFrame(this._getChannelVolume);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+
+    this.track.channel.disconnect(this.meter);
+    this.meter.dispose();
+  }
+
+  private _getChannelVolume = (timestamp: number) => {
+    this.channelVolume = this.meter.getValue();
+    window.requestAnimationFrame(this._getChannelVolume);
+  }
 
   private _dispatchSelectTrack = () => {
     const detail = this.track.id;
@@ -154,6 +190,7 @@ export class TrackLane extends LitElement {
       </option>
     `;
   }
+  
 
   override render() {
     return html`
@@ -180,6 +217,10 @@ export class TrackLane extends LitElement {
           >
             ${this.midiInputs.map(this._renderMidiInputs)}
           </select>
+        </div>
+
+        <div class="track__output">
+          <input-meter .value=${this.channelVolume}></input-meter>
         </div>
       </div>
     `;

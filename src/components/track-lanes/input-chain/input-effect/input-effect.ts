@@ -1,11 +1,19 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { createAttributeUpdate } from '../../../../helpers/helpers';
+import {
+  createToneAttributeUpdate,
+  flattenToneAttributes,
+} from '../../../../helpers/helpers';
 
 import '../../../shared/control-knob';
 
-import { KnobValueChangedEvent } from './input-effect.interface';
+import { effects as effectsLibrary } from './input-effect.lib';
+import {
+  InputEffectLibraryItem,
+  InputEffectLibraryItemParameter,
+  KnobValueChangedEvent,
+} from './input-effect.d';
 
 @customElement('input-effect')
 export class InputEffect extends LitElement {
@@ -21,7 +29,7 @@ export class InputEffect extends LitElement {
     }
 
     h1 {
-      margin: 1em 0 0.25em;
+      margin: 0.5em 0 0.25em;
     }
 
     .input-chain__effect {
@@ -38,9 +46,9 @@ export class InputEffect extends LitElement {
 
     .effect__controls {
       display: grid;
-      gap: 0.5em 1em;
-      grid-template-columns: 96px 96px;
-      grid-template-rows: 64px 64px;
+      gap: 0.25em 1em;
+      grid-template-columns: repeat(3, 96px);
+      grid-template-rows: repeat(2, 64px);
     }
   `;
 
@@ -70,73 +78,38 @@ export class InputEffect extends LitElement {
 
   private _handlePropChange = (event: KnobValueChangedEvent) => {
     const { name: propName, value: propValue } = event.detail;
-    const attributeUpdate = createAttributeUpdate(propName, propValue);
+    const attributeUpdate = createToneAttributeUpdate(propName, propValue);
     this.effect.toneEffect.set(attributeUpdate);
   }
 
   private _renderControls() {
-    switch (this.effect.id) {
-      case 'distortion':
-        return this._renderDistortionControls();
-      case 'reverb':
-        return this._renderReverbControls();
-      default:
-        return html``;
+    const effectControls = effectsLibrary.find((effect: InputEffectLibraryItem) => {
+      return effect.id === this.effect.id;
+    });
+
+    if (!effectControls) {
+      return null;
     }
-  }
 
-  private _renderDistortionControls() {
-    const { distortion, wet } = this.effect.toneEffect.get();
-    return html`
-      <control-knob
-        size="medium"
-        name="distortion"
-        value=${distortion}
-        min="0"
-        max="1"
-        step="0.001"
-      >
-        Distortion
-      </control-knob>
-
-      <control-knob
-        size="medium"
-        name="wet"
-        value=${wet}
-        min="0"
-        max="1"
-        step="0.001"
-      >
-        Wet
-      </control-knob>
-    `;
-  }
-
-  private _renderReverbControls() {
-    const { decay, wet } = this.effect.toneEffect.get();
-    return html`
-      <control-knob
-        size="medium"
-        name="decay"
-        value=${decay}
-        min="0"
-        max="60"
-        step="0.001"
-      >
-        Decay
-      </control-knob>
-
-      <control-knob
-        size="medium"
-        name="wet"
-        value=${wet}
-        min="0"
-        max="1"
-        step="0.001"
-      >
-        Wet
-      </control-knob>
-    `;
+    const attributes = this.effect.toneEffect.get();
+    const flattenedAttributes = flattenToneAttributes(attributes);
+    return effectControls.parameters.map((parameter: InputEffectLibraryItemParameter) => {
+      const { [parameter.id]: parameterValue }: { [key: string]: any } = flattenedAttributes;
+      return html`
+        <control-knob
+          size="medium"
+          name=${parameter.id}
+          value=${parameterValue}
+          min=${parameter.min}
+          max=${parameter.max}
+          step=${parameter.step}
+          unit=${parameter.unit}
+          .valueMap=${parameter.valueMap}
+        >
+          ${parameter.name}
+        </control-knob>
+      `
+    });
   }
 
   override render() {

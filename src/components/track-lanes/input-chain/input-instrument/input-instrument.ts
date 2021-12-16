@@ -1,11 +1,11 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { createAttributeUpdate } from '../../../../helpers/helpers';
+import { createToneAttributeUpdate } from '../../../../helpers/helpers';
 
 import '../../../shared/control-knob';
 
-import { KnobValueChangedEvent } from './input-instrument.interface';
+import { KnobValueChangedEvent } from './input-instrument.d';
 
 @customElement('input-instrument')
 export class InputInstrument extends LitElement {
@@ -67,7 +67,7 @@ export class InputInstrument extends LitElement {
 
   private _handlePropChange = (event: KnobValueChangedEvent) => {
     const { name: propName, value: propValue } = event.detail;
-    const attributeUpdate = createAttributeUpdate(propName, propValue);
+    const attributeUpdate = createToneAttributeUpdate(propName, propValue);
     this.instrument.toneInstrument.set(attributeUpdate);
   }
 

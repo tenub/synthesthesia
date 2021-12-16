@@ -240,9 +240,10 @@ export class ControlKnob extends LitElement {
   }
 
   private _dispatchChangeValue() {
-    let { value } = this.valueMap[this.value] || {};
-    if (!value) {
-      value = this.value;
+    let value = this.value;
+    if (this.valueMap) {
+      const mappedValue = this.valueMap[this.value];
+      value = mappedValue || this.value;
     }
 
     const detail = { name: this.name, value };
@@ -331,9 +332,10 @@ export class ControlKnob extends LitElement {
   }
 
   private _renderValue() {
-    let { displayValue } = this.valueMap[this.value] || {};
-    if (!displayValue) {
-      displayValue = this.value;
+    let displayValue = this.value;
+    if (this.valueMap) {
+      const mappedValue = this.valueMap[this.value];
+      displayValue = mappedValue || this.value;
     }
 
     return html`

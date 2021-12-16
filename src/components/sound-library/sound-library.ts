@@ -2,45 +2,16 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 
+import {
+  instruments as instrumentLibrary,
+  effects as effectsLibrary,
+} from './sound-library.lib';
 import './sound-library-element';
 
-import { SoundLibraryItem } from './sound-library.interface';
+import { SoundLibraryItem } from './sound-library.d';
 
 @customElement('sound-library')
 export class SoundLibrary extends LitElement {
-  static instruments: SoundLibraryItem[] = [
-    { id: 'synth', name: 'Synth', type: 'instrument' },
-    { id: 'sampler', name: 'Sampler', type: 'instrument' },
-  ]
-
-  static effects: SoundLibraryItem[] = [
-    { id: 'auto-filter', name: 'AutoFilter', type: 'effect' },
-    { id: 'auto-panner', name: 'AutoPanner', type: 'effect' },
-    { id: 'auto-wah', name: 'AutoWah', type: 'effect' },
-    { id: 'bit-crusher', name: 'BitCrusher', type: 'effect' },
-    { id: 'chebyshev', name: 'Chebyshev', type: 'effect' },
-    { id: 'chorus', name: 'Chorus', type: 'effect' },
-    { id: 'distortion', name: 'Distortion', type: 'effect' },
-    { id: 'feedback-delay', name: 'FeedbackDelay', type: 'effect' },
-    { id: 'freeverb', name: 'Freeverb', type: 'effect' },
-    { id: 'frequency-shifter', name: 'FrequencyShifter', type: 'effect' },
-    { id: 'jc-reverb', name: 'JCReverb', type: 'effect' },
-    { id: 'mid-side-effect', name: 'MidSideEffect', type: 'effect' },
-    { id: 'phaser', name: 'Phaser', type: 'effect' },
-    { id: 'ping-pong-delay', name: 'PingPongDelay', type: 'effect' },
-    { id: 'pitch-shift', name: 'PitchShift', type: 'effect' },
-    { id: 'reverb', name: 'Reverb', type: 'effect' },
-    { id: 'stereo-widener', name: 'StereoWidener', type: 'effect' },
-    { id: 'tremolo', name: 'Tremolo', type: 'effect' },
-    { id: 'vibrato', name: 'Vibrato', type: 'effect' },
-
-    { id: 'compressor', name: 'Compressor', type: 'effect' },
-    { id: 'eq3', name: 'EQ3', type: 'effect' },
-    { id: 'limiter', name: 'Limiter', type: 'effect' },
-
-    { id: 'analyser', name: 'Analyser', type: 'utility' },
-  ]
-
   static override styles = css`
     :host {
       background-color: var(--background-color-2);
@@ -162,13 +133,13 @@ export class SoundLibrary extends LitElement {
           <li>
             <h1>Instruments</h1>
             <ul class="sound-library__items">
-              ${SoundLibrary.instruments.reduce(this._filterAndRenderItems, [])}
+              ${instrumentLibrary.reduce(this._filterAndRenderItems, [])}
             </ul>
           </li>
           <li>
             <h1>Effects</h1>
             <ul class="sound-library__items">
-              ${SoundLibrary.effects.reduce(this._filterAndRenderItems, [])}
+              ${effectsLibrary.reduce(this._filterAndRenderItems, [])}
             </ul>
           </li>
         </ul>

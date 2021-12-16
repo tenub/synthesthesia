@@ -13,7 +13,7 @@ import {
   MIDIConnectionEvent,
   MIDIMessageEvent,
   MIDINoteInput,
-} from './web-daw.interface';
+} from './web-daw.d';
 
 @customElement('web-daw')
 export class WebDAW extends LitElement {

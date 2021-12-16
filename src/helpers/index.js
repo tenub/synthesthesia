@@ -1,9 +1,11 @@
 import {
   roundWithPrecision,
-  createAttributeUpdate,
+  createToneAttributeUpdate,
+  flattenToneAttributes,
 } from './helpers';
 
 export {
   roundWithPrecision,
-  createAttributeUpdate,
+  createToneAttributeUpdate,
+  flattenToneAttributes,
 };

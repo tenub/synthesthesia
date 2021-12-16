@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 import * as Tone from 'tone';
 
-import { Track } from '../track-lane/track-lane.interface';
+import { Track } from '../track-lane/track-lane.d';
 
 import './input-instrument';
 import './input-effect';
@@ -29,19 +29,24 @@ export class InputChain extends LitElement {
       box-sizing: inherit;
     }
 
+    ::-webkit-scrollbar {
+      background: none;
+      height: 12px;
+    }
+
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--background-color-1);
+      background-clip: content-box;
+      border: 2px solid transparent;
+      border-radius: 6px;
+    }
+
     .input-chain {
       display: grid;
       gap: 0 0.5em;
-      grid-template-columns: [instrument-col] auto
-                             [effects-col] auto
-                             [utilities-col] auto ;
-      grid-template-rows: [title-row] 20px [chain-row] auto;
-      overflow: auto;
-    }
-
-    .input-chain__label {
-      grid-column: 1 / 3;
-      grid-row: 1 / 1;
+      grid-template-columns: [instrument-col] auto [effects-col] auto;
+      grid-template-rows: [chain-row] max-content;
     }
 
     .input-chain__instrument,
@@ -49,12 +54,13 @@ export class InputChain extends LitElement {
       background-color: var(--background-color-3);
       border-top: 1px solid var(--background-color-1);
       border-radius: 0.5em;
-      box-shadow: inset 0 1px 0.25em var(--background-color-1);
+      box-shadow: 0 0.125em 0.25em var(--background-color-1);
       display: flex;
       gap: 0.5em;
       height: 100%;
       min-width: 64px;
       padding: 0.5em 0;
+      position: relative;
     }
 
     .input-chain__instrument {
@@ -65,6 +71,7 @@ export class InputChain extends LitElement {
     .input-chain__effects {
       grid-column: 2 / 2;
       grid-row: 2 / 2;
+      overflow: auto;
     }
 
     .input-chain__effect-placeholder {
@@ -73,6 +80,15 @@ export class InputChain extends LitElement {
       height: calc(100% - --size-increment);
       margin: 0 var(--size-increment);
       width: 2px;
+    }
+
+    .chain-placeholder {
+      font-size: 0.75em;
+      left: 50%;
+      position: absolute;
+      bottom: 50%;
+      transform: translateX(-50%) translateY(-50%) rotate(-90deg);
+      width: 128px;
     }
   `;
 
@@ -121,18 +137,24 @@ export class InputChain extends LitElement {
   private _defineEffect(id: string, name: string): any {
     let toneEffect;
     switch (id) {
+      case 'auto-filter':
+        toneEffect = new Tone.AutoFilter();
+        break;
+
+      case 'chorus':
+        toneEffect = new Tone.Chorus();
+        break;
+
       case 'distortion':
-        toneEffect = new Tone.Distortion({
-          distortion: 0,
-          wet: 0.5,
-        });
+        toneEffect = new Tone.Distortion();
+        break;
+
+      case 'ping-pong-delay':
+        toneEffect = new Tone.PingPongDelay();
         break;
 
       case 'reverb':
-        toneEffect = new Tone.Reverb({
-          decay: 10,
-          wet: 0.5,
-        });
+        toneEffect = new Tone.Reverb();
         break;
 
       default:
@@ -234,7 +256,7 @@ export class InputChain extends LitElement {
 
   private _renderInstrument() {
     if (!this.track.instrument) {
-      return null;
+      return this._renderChainPlaceholder('instrument');
     }
 
     return html`
@@ -257,22 +279,26 @@ export class InputChain extends LitElement {
     `;
   }
 
+  private _renderChainPlaceholder(type: string) {
+    return html`
+      <div class="chain-placeholder">
+        Drag ${type} here
+      </div>
+    `;
+  }
+
   override render() {
     const effects = this.track.effects.slice();
-    if (this._closestDropIndex > -1) {
+    /* if (this._closestDropIndex > -1) {
       effects.splice(this._closestDropIndex, 0, {
         id: 'effect-placeholder',
         name: 'Effect Placeholder',
         toneEffect: null,
       });
-    }
+    } */
 
     return html`
       <div class="input-chain">
-        <div class="input-chain__label">
-          ${this.track.name}
-        </div>
-
         <div
           ${ref(this._instrumentRef)}
           class="input-chain__instrument"
@@ -284,7 +310,9 @@ export class InputChain extends LitElement {
           ${ref(this._effectsRef)}
           class="input-chain__effects"
         >
-          ${effects.map(this._renderEffect)}
+          ${effects.length > 0
+            ? effects.map(this._renderEffect)
+            : this._renderChainPlaceholder('effect')}
         </div>
       </div>
     `;
