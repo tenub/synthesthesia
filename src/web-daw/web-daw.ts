@@ -86,7 +86,7 @@ export class WebDAW extends LitElement {
   midiOutputs: MIDIOutput[] = []
 
   @state()
-  midiNotes: MIDINoteInput = {}
+  inputNotes: MIDINoteInput = {}
 
   private async _initMIDIAccess() {
     if (typeof window.navigator.requestMIDIAccess !== 'function') {
@@ -99,7 +99,7 @@ export class WebDAW extends LitElement {
     const midiInputEntries = [...access.inputs.values()];
     this.midiInputs = midiInputEntries.map((midiInput: MIDIInput) => {
       midiInput.onmidimessage = this._handleMidiInputMessage;
-      this.midiNotes[midiInput.id] = {};
+      this.inputNotes[midiInput.id] = {};
       return midiInput;
     });
 
@@ -154,26 +154,26 @@ export class WebDAW extends LitElement {
       case WebDAW.MIDI_NOTE_ON: {
         const [note, velocity] = data;
         const key = note.toString();
-        const updatedMidiNotes = { ...this.midiNotes };
+        const updatedMidiNotes = { ...this.inputNotes };
         const updatedMidiInputNotes = {
           ...updatedMidiNotes[midiInput.id],
           [key]: velocity,
         };
         updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
-        this.midiNotes = updatedMidiNotes;
+        this.inputNotes = updatedMidiNotes;
         break;
       }
 
       case WebDAW.MIDI_NOTE_OFF: {
         const [note] = data;
         const key = note.toString();
-        const updatedMidiNotes = { ...this.midiNotes };
+        const updatedMidiNotes = { ...this.inputNotes };
         const {
           [key]: keyToRemove,
           ...updatedMidiInputNotes
         } = updatedMidiNotes[midiInput.id];
         updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
-        this.midiNotes = updatedMidiNotes;
+        this.inputNotes = updatedMidiNotes;
         break;
       }
     }
@@ -217,7 +217,7 @@ export class WebDAW extends LitElement {
     const octave = 3;
     const velocity = 127;
     const note = octave * 12 + offset;
-    const updatedMidiNotes = { ...this.midiNotes };
+    const updatedMidiNotes = { ...this.inputNotes };
     const key = note.toString();
 
     switch (event.type) {
@@ -227,7 +227,7 @@ export class WebDAW extends LitElement {
           [key]: velocity,
         };
         updatedMidiNotes.keyboard = updatedMidiInputNotes;
-        this.midiNotes = updatedMidiNotes;
+        this.inputNotes = updatedMidiNotes;
         break;
       }
 
@@ -237,7 +237,7 @@ export class WebDAW extends LitElement {
           ...updatedMidiInputNotes
         } = updatedMidiNotes.keyboard;
         updatedMidiNotes.keyboard = updatedMidiInputNotes;
-        this.midiNotes = updatedMidiNotes;
+        this.inputNotes = updatedMidiNotes;
         break;
       }
     }
@@ -250,7 +250,7 @@ export class WebDAW extends LitElement {
       <track-lanes
         .midiInputs=${this.midiInputs}
         .midiOutputs=${this.midiOutputs}
-        .midiNotes=${this.midiNotes}
+        .inputNotes=${this.inputNotes}
       ></track-lanes>
     `;
   }
