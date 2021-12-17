@@ -5,13 +5,14 @@ import { classMap } from 'lit/directives/class-map.js';
 import * as Tone from 'tone';
 
 import '../shared/custom-icon';
+
+import './piano-roll';
 import './input-chain';
 import './track-lane';
 
 import {
   Track,
   TrackInstrument,
-  TrackEffect,
   TrackSelectedEvent,
   TrackUpdatedEvent,
 } from './track-lane/track-lane.d';
@@ -51,7 +52,7 @@ export class TrackLanes extends LitElement {
       display: grid;
       grid-column: 2 / 2;
       grid-row: 2 / 2;
-      grid-template-rows: [tracks] calc(100vh - 384px) [chain] 320px;
+      grid-template-rows: [tracks] calc(100vh - 640px) [piano-roll] 320px [chain] 256px;
       position: relative;
       z-index: 1;
     }
@@ -64,7 +65,6 @@ export class TrackLanes extends LitElement {
 
     .track-lanes {
       overflow: auto;
-
     }
 
     .track-lanes--empty {
@@ -104,7 +104,10 @@ export class TrackLanes extends LitElement {
   tracks: Track[] = [];
 
   @state()
-  selectedTrackIndex = 0;
+  selectedTrackIndex = -1;
+
+  @state()
+  selectedPatternIndex = -1;
 
   _trackLanesRef = createRef<HTMLDivElement>();
 
@@ -117,12 +120,13 @@ export class TrackLanes extends LitElement {
     this.addEventListener('instrumentremoved', this._handleRemoveInstrument);
     this.addEventListener('effectadded', this._handleAddEffect);
     this.addEventListener('effectremoved', this._handleRemoveEffect);
+    this.addEventListener('patternselected', this._handleSelectPattern);
   }
 
   override willUpdate(changedProperties: Map<string, any>) {
     const prevInputNotes = changedProperties.get('inputNotes') ?? {};
     this.tracks.forEach((track: Track) => {
-      const noteKey = track.midiInputId ?? 'keyboard';
+      const noteKey = track.midiInputId;
       const prevNotes = prevInputNotes[noteKey] ?? {};
       const notes = this.inputNotes[noteKey] ?? {};
       Object.entries(notes).forEach(([key, velocity]) => {
@@ -135,6 +139,25 @@ export class TrackLanes extends LitElement {
       });
 
       Object.entries(prevNotes).forEach(([key]) => {
+        if (!notes[key]) {
+          const note = Number(key);
+          const frequency = TrackLanes.midiNumberToFrequency(note);
+          this._stopInstrument(track.instrument, { frequency });
+        }
+      });
+
+      const prevKeyboardNotes = prevInputNotes.keyboard ?? {};
+      const keyboardNotes = this.inputNotes.keyboard ?? {};
+      Object.entries(keyboardNotes).forEach(([key, velocity]) => {
+        const note = Number(key);
+        const frequency = TrackLanes.midiNumberToFrequency(note);
+        const gain = velocity / 127;
+        if (!prevNotes[key]) {
+          this._startInstrument(track.instrument, { frequency, gain });
+        }
+      });
+
+      Object.entries(prevKeyboardNotes).forEach(([key]) => {
         if (!notes[key]) {
           const note = Number(key);
           const frequency = TrackLanes.midiNumberToFrequency(note);
@@ -253,6 +276,7 @@ export class TrackLanes extends LitElement {
       channel: newTrackChannel,
       instrument: null,
       effects: [],
+      patterns: [],
     } as Track;
     this.tracks = [
       ...this.tracks,
@@ -275,6 +299,13 @@ export class TrackLanes extends LitElement {
     this.selectedTrackIndex = trackIndex;
   }
 
+  private _handleDeselectTrack = (event: PointerEvent) => {
+    const clickedElement = event.target as HTMLElement;
+    if (!clickedElement.closest('track-lane')) {
+      this.selectedTrackIndex = -1;
+    }
+  }
+
   private _handleUpdateTrack(event: TrackUpdatedEvent) {
     const { id, attributes } = event.detail;
     const trackIndex = this.tracks.findIndex(track => track.id === id);
@@ -288,28 +319,22 @@ export class TrackLanes extends LitElement {
     this.tracks = updatedTracks;
   }
 
-  private _renderTrack = (track: Track) => {
-    return html`
-      <track-lane
-        .midiInputs=${this.midiInputs}
-        .midiOutputs=${this.midiOutputs}
-        .track=${track}
-      ></track-lane>
-    `;
-  }
-
-  private _renderInputChain() {
+  private _handleSelectPattern = (event: CustomEvent) => {
+    const id = event.detail;
     const selectedTrack = this.tracks[this.selectedTrackIndex];
     if (!selectedTrack) {
-      return null;
+      return;
     }
 
-    return html`
-      <input-chain .track=${selectedTrack}></input-chain>
-    `;
+    const patternIndex = selectedTrack.patterns.findIndex(pattern => pattern.id === id);
+    if (patternIndex === -1) {
+      return;
+    }
+
+    this.selectedPatternIndex = patternIndex;
   }
 
-  override render() {
+  private _renderTrackLanes = () => {
     const trackCount = this.tracks.length;
     const isTracksEmpty = trackCount === 0;
     const trackLaneClasses = {
@@ -319,8 +344,9 @@ export class TrackLanes extends LitElement {
 
     return html`
       <div
-        class=${classMap(trackLaneClasses)}
         ${ref(this._trackLanesRef)}
+        class=${classMap(trackLaneClasses)}
+        @click=${this._handleDeselectTrack}
       >
         ${this.tracks.map(this._renderTrack)}
 
@@ -332,8 +358,31 @@ export class TrackLanes extends LitElement {
           Add Track
         </button>
       </div>
+    `;
+  }
 
-      ${this._renderInputChain()}
+  private _renderTrack = (track: Track) => {
+    return html`
+      <track-lane
+        .midiInputs=${this.midiInputs}
+        .midiOutputs=${this.midiOutputs}
+        .track=${track}
+      ></track-lane>
+    `;
+  }
+
+  override render() {
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
+
+    let selectedPattern;
+    if (selectedTrack) {
+      selectedPattern = selectedTrack.patterns[this.selectedPatternIndex];
+    }
+
+    return html`
+      ${this._renderTrackLanes()}
+      <piano-roll .pattern=${selectedPattern}></piano-roll>
+      <input-chain .track=${selectedTrack}></input-chain>
     `;
   }
 }

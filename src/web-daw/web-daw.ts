@@ -25,6 +25,11 @@ export class WebDAW extends LitElement {
 
   static KEYBOARD_NOTE_OFF = 'keyup';
 
+  static keyboardNoteOffsets = [
+    'z', 's', 'x', 'd', 'c', 'v',
+    'g', 'b', 'h', 'n', 'j', 'm',
+  ];
+
   static findMidiPortById(ports: MIDIPort[], id: string): number {
     return ports.findIndex(port => port.id === id);
   }
@@ -154,90 +159,64 @@ export class WebDAW extends LitElement {
       case WebDAW.MIDI_NOTE_ON: {
         const [note, velocity] = data;
         const key = note.toString();
-        const updatedMidiNotes = { ...this.inputNotes };
-        const updatedMidiInputNotes = {
-          ...updatedMidiNotes[midiInput.id],
+        const updatedNotes = { ...this.inputNotes };
+        const updatedInputNotes = {
+          ...updatedNotes[midiInput.id],
           [key]: velocity,
         };
-        updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
-        this.inputNotes = updatedMidiNotes;
+        updatedNotes[midiInput.id] = updatedInputNotes;
+        this.inputNotes = updatedNotes;
         break;
       }
 
       case WebDAW.MIDI_NOTE_OFF: {
         const [note] = data;
         const key = note.toString();
-        const updatedMidiNotes = { ...this.inputNotes };
+        const updatedNotes = { ...this.inputNotes };
         const {
           [key]: keyToRemove,
-          ...updatedMidiInputNotes
-        } = updatedMidiNotes[midiInput.id];
-        updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
-        this.inputNotes = updatedMidiNotes;
+          ...updatedInputNotes
+        } = updatedNotes[midiInput.id];
+        updatedNotes[midiInput.id] = updatedInputNotes;
+        this.inputNotes = updatedNotes;
         break;
       }
     }
   }
 
-  private _handleKeyboardInput(event: KeyboardEvent) {
-    let offset;
-    switch (event.key) {
-      case 'z':
-        offset = 0; break;
-      case 's':
-        offset = 1; break;
-      case 'x':
-        offset = 2; break;
-      case 'd':
-        offset = 3; break;
-      case 'c':
-        offset = 4; break;
-      case 'v':
-        offset = 5; break;
-      case 'g':
-        offset = 6; break;
-      case 'b':
-        offset = 7; break;
-      case 'h':
-        offset = 8; break;
-      case 'n':
-        offset = 9; break;
-      case 'j':
-        offset = 10; break;
-      case 'm':
-        offset = 11; break;
-    }
-
-    if (typeof offset === 'undefined') {
+  private _handleKeyboardInput = (event: KeyboardEvent) => {
+    const offset = WebDAW.keyboardNoteOffsets.findIndex(key => key === event.key)
+    if (offset < 0) {
       return;
     }
 
     event.preventDefault();
 
-    const octave = 3;
+    const octave = 5;
     const velocity = 127;
     const note = octave * 12 + offset;
-    const updatedMidiNotes = { ...this.inputNotes };
     const key = note.toString();
 
     switch (event.type) {
       case WebDAW.KEYBOARD_NOTE_ON: {
-        const updatedMidiInputNotes = {
-          ...updatedMidiNotes.keyboard,
+        const updatedNotes = { ...this.inputNotes };
+        const updatedInputNotes = {
+          ...updatedNotes.keyboard,
           [key]: velocity,
         };
-        updatedMidiNotes.keyboard = updatedMidiInputNotes;
-        this.inputNotes = updatedMidiNotes;
+        updatedNotes.keyboard = updatedInputNotes;
+        this.inputNotes = updatedNotes;
         break;
       }
 
       case WebDAW.KEYBOARD_NOTE_OFF: {
+        const updatedNotes = { ...this.inputNotes };
         const {
           [key]: keyToRemove,
-          ...updatedMidiInputNotes
-        } = updatedMidiNotes.keyboard;
-        updatedMidiNotes.keyboard = updatedMidiInputNotes;
-        this.inputNotes = updatedMidiNotes;
+          ...updatedInputNotes
+        } = updatedNotes.keyboard;
+        updatedNotes.keyboard = updatedInputNotes;
+        this.inputNotes = updatedNotes;
         break;
       }
     }

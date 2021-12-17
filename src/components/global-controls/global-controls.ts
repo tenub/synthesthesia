@@ -57,7 +57,8 @@ export class GlobalControls extends LitElement {
     }
 
     .bpm {
-      margin-right: 2em;
+      align-items: center;
+      display: flex;
     }
   `;
 
@@ -68,7 +69,7 @@ export class GlobalControls extends LitElement {
     return html`
       <div class="controls--left">
         <button class="bpm">
-          ${this.bpm}
+          <custom-icon size="small">hdr_strong</custom-icon>&nbsp;${this.bpm}
         </button>
       </div>
 

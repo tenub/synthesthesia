@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
+import { classMap } from 'lit/directives/class-map.js';
 import * as Tone from 'tone';
 
 import { Track } from '../track-lane/track-lane.d';
@@ -17,7 +18,7 @@ export class InputChain extends LitElement {
       box-sizing: var(--box-sizing);
       display: flex;
       grid-column: 1 / 1;
-      grid-row: 2 / 2;
+      grid-row: 3 / 3;
       padding: 0.5em 1em;
       position: relative;
       z-index: 2;
@@ -34,7 +35,6 @@ export class InputChain extends LitElement {
       height: 12px;
     }
 
-
     ::-webkit-scrollbar-thumb {
       background: var(--background-color-1);
       background-clip: content-box;
@@ -42,11 +42,20 @@ export class InputChain extends LitElement {
       border-radius: 6px;
     }
 
-    .input-chain {
+    .input-chain:not(.input-chain--isEmpty) {
       display: grid;
       gap: 0 0.5em;
       grid-template-columns: [instrument-col] auto [effects-col] auto;
       grid-template-rows: [chain-row] max-content;
+    }
+
+    .input-chain--isEmpty {
+      align-items: center;
+      color: grey;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      user-select: none;
     }
 
     .input-chain__instrument,
@@ -287,7 +296,7 @@ export class InputChain extends LitElement {
     `;
   }
 
-  override render() {
+  private _renderChain = () => {
     const effects = this.track.effects.slice();
     /* if (this._closestDropIndex > -1) {
       effects.splice(this._closestDropIndex, 0, {
@@ -298,22 +307,39 @@ export class InputChain extends LitElement {
     } */
 
     return html`
-      <div class="input-chain">
-        <div
-          ${ref(this._instrumentRef)}
-          class="input-chain__instrument"
-        >
-          ${this._renderInstrument()}
-        </div>
+      <div
+        ${ref(this._instrumentRef)}
+        class="input-chain__instrument"
+      >
+        ${this._renderInstrument()}
+      </div>
 
-        <div
-          ${ref(this._effectsRef)}
-          class="input-chain__effects"
-        >
-          ${effects.length > 0
-            ? effects.map(this._renderEffect)
-            : this._renderChainPlaceholder('effect')}
-        </div>
+      <div
+        ${ref(this._effectsRef)}
+        class="input-chain__effects"
+      >
+        ${effects.length > 0
+          ? effects.map(this._renderEffect)
+          : this._renderChainPlaceholder('effect')}
+      </div>
+    `;
+  }
+  
+  private _renderNullState() {
+    return html`
+      <span>No track selected</span>
+    `;
+  }
+
+  override render() {
+    const isTrackDefined = typeof this.track !== 'undefined';
+    const classes = {
+      'input-chain': true,
+      'input-chain--isEmpty': !isTrackDefined,
+    };
+    return html`
+      <div class=${classMap(classes)}>
+        ${isTrackDefined ? this._renderChain() : this._renderNullState()}
       </div>
     `;
   }

@@ -7,7 +7,7 @@ import '../../shared/custom-icon';
 import '../../shared/input-meter';
 
 import { MIDIInput, MIDIOutput } from '../../../web-daw/web-daw.d';
-import { Track } from './track-lane.d';
+import { Track, TrackPattern } from './track-lane.d';
 
 @customElement('track-lane')
 export class TrackLane extends LitElement {
@@ -86,6 +86,29 @@ export class TrackLane extends LitElement {
       background-color: var(--background-color-4);
       padding: 0.5em 1em;
     }
+
+    .track__patterns {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .track__pattern {
+      padding: 0.5em;
+    }
+
+    .add-pattern {
+      align-items: center;
+      background: none;
+      border: none;
+      color: var(--main-color);
+      display: flex;
+      font-family: var(--main-font-family);
+      font-size: var(--main-font-size);
+      margin: 0;
+      padding: 0.25em;
+    }
   `;
 
   @property({ type: Array })
@@ -126,7 +149,7 @@ export class TrackLane extends LitElement {
     this.meter.dispose();
   }
 
-  private _getChannelVolume = (timestamp: number) => {
+  private _getChannelVolume = () => {
     this.channelVolume = this.meter.getValue();
     window.requestAnimationFrame(this._getChannelVolume);
   }
@@ -149,6 +172,16 @@ export class TrackLane extends LitElement {
       composed: true,
       cancelable: true,
       detail,
+    });
+    this.dispatchEvent(event);
+  }
+
+  private _dispatchSelectPattern = (id: number) => {
+    const event = new CustomEvent('patternselected', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: id,
     });
     this.dispatchEvent(event);
   }
@@ -180,6 +213,35 @@ export class TrackLane extends LitElement {
     trackLabel.blur();
   }
 
+  private _addPattern = () => {
+    const track = { ...this.track };
+    const newPatternId = track.patterns.length;
+    const newPatternName = `Pattern ${newPatternId + 1}`;
+    const newPattern = {
+      id: newPatternId,
+      name: newPatternName,
+    } as TrackPattern;
+    this._dispatchUpdateTrack({
+      patterns: [
+        ...track.patterns,
+        newPattern,
+      ],
+    });
+  }
+
+  private _renderPattern = (pattern: TrackPattern) => {
+    return html`
+      <div
+        class="track__pattern"
+        @click=${() => {
+          this._dispatchSelectPattern(pattern.id);
+        }}
+      >
+        ${pattern.name}
+      </div>
+    `;
+  }
+
   private _renderMidiInputs(input: MIDIInput) {
     return html`
       <option
@@ -190,7 +252,6 @@ export class TrackLane extends LitElement {
       </option>
     `;
   }
-  
 
   override render() {
     return html`
@@ -198,6 +259,18 @@ export class TrackLane extends LitElement {
         class="track"
         @click=${this._dispatchSelectTrack}
       >
+        <div class="track__patterns">
+          ${this.track.patterns.map(this._renderPattern)}
+
+          <button
+            class="add-pattern"
+            @click=${this._addPattern}
+          >
+            <custom-icon>add</custom-icon>
+            Add Pattern
+          </button>
+        </div>
+
         <div class="track__controls">
           <textarea
             ${ref(this._trackLabelRef)}

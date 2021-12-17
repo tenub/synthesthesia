@@ -8,6 +8,7 @@ export interface Track {
   channel: Tone.Channel,
   instrument: TrackInstrument,
   effects: TrackEffect[],
+  patterns: TrackPattern[],
 }
 
 export interface TrackInstrument {
@@ -20,6 +21,11 @@ export interface TrackEffect {
   id: string,
   name: string,
   toneEffect: any,
+}
+
+export interface TrackPattern {
+  id: number,
+  name: string,
 }
 
 export interface TrackSelectedEvent extends CustomEvent {

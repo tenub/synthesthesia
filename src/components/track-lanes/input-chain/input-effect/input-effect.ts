@@ -47,7 +47,7 @@ export class InputEffect extends LitElement {
     .effect__controls {
       display: grid;
       gap: 0.25em 1em;
-      grid-template-columns: repeat(3, 96px);
+      grid-template-columns: repeat(10, 96px);
       grid-template-rows: repeat(2, 64px);
     }
   `;
