@@ -4,7 +4,7 @@ export const effects: InputEffectLibraryItem[] = [{
   id: 'auto-filter',
   name: 'Auto Filter',
   parameters: [{
-    id: 'filter.q',
+    id: 'filter.Q',
     name: 'Filter Q',
     min: 0,
     max: 20,

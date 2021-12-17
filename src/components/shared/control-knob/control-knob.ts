@@ -186,28 +186,28 @@ export class ControlKnob extends LitElement {
   `
 
   @property({ type: String })
-  size: string | number = "medium";
+  size: string = "medium";
 
   @property({ type: String })
   name: string;
 
-  @property({ type: String })
-  value: string;
-
-  @property({ type: String })
-  min: string;
-
-  @property({ type: String })
-  max: string;
+  @property({ type: Number })
+  value: number;
 
   @property({ type: Number })
-  step: number = 1.0;
+  min: number;
+
+  @property({ type: Number })
+  max: number;
+
+  @property({ type: Number })
+  step: number = 1;
 
   @property({ type: String })
   unit: string = '';
 
   @property({ type: Array })
-  valueMap: { displayValue: any, value: any }[] = [];
+  valueMap = [];
 
   @state()
   _isDragging: boolean = false;
@@ -242,8 +242,10 @@ export class ControlKnob extends LitElement {
   private _dispatchChangeValue() {
     let value = this.value;
     if (this.valueMap) {
-      const mappedValue = this.valueMap[this.value];
-      value = mappedValue || this.value;
+      let mappedValue = this.valueMap[this.value];
+      if (typeof mappedValue !== 'undefined') {
+        value = mappedValue;
+      }
     }
 
     const detail = { name: this.name, value };
@@ -258,7 +260,7 @@ export class ControlKnob extends LitElement {
 
   private _handleInput = () => {
     const input = this._inputRef.value! as HTMLInputElement;
-    this.value = input.value;
+    this.value = Number(input.value);
 
     this._dispatchChangeValue();
   }
@@ -291,18 +293,19 @@ export class ControlKnob extends LitElement {
     if (this._isDragging) {
       const min = Number(this.min);
       const max = Number(this.max);
+      const step = this.step || 1;
       const startValue = this._startingValue;
       const startRotation = startValue / (max - min) * ControlKnob.maxRotation;
       const distance = this._startingY - event.y;
       const rotation = startRotation + distance / (2 * Math.PI * this._radius) * 360;
       const actualRotation = (rotation < 0) ? 0 : (rotation > ControlKnob.maxRotation) ? ControlKnob.maxRotation : rotation;
       const newValue = actualRotation / ControlKnob.maxRotation * (max - min);
-      const roundPrecision = -1 * Math.log10(this.step);
+      const roundPrecision = -1 * Math.log10(step);
       const roundedValue = roundWithPrecision(newValue, roundPrecision);
-      this.value = roundedValue.toString();
+      this.value = roundedValue;
 
       const input = this._inputRef.value! as HTMLInputElement;
-      input.value = this.value;
+      input.value = this.value.toString();
 
       this._dispatchChangeValue();
     };
@@ -332,15 +335,17 @@ export class ControlKnob extends LitElement {
   }
 
   private _renderValue() {
-    let displayValue = this.value;
+    let value = this.value;
     if (this.valueMap) {
-      const mappedValue = this.valueMap[this.value];
-      displayValue = mappedValue || this.value;
+      let mappedValue = this.valueMap[this.value];
+      if (typeof mappedValue !== 'undefined') {
+        value = mappedValue;
+      }
     }
 
     return html`
       <div ${ref(this._valueRef)}>
-        ${displayValue}
+        ${value}
       </div>
     `;
   }
@@ -358,6 +363,7 @@ export class ControlKnob extends LitElement {
   }
 
   private _renderInput() {
+    const step = this.step || 1;
     return html`
       <div class="control-knob__value">
         <div class="control-knob__input-wrapper">
@@ -369,7 +375,7 @@ export class ControlKnob extends LitElement {
             value=${this.value}
             min=${this.min}
             max=${this.max}
-            step=${this.step}
+            step=${step}
             @focus=${this._handleFocus}
             @blur=${this._handleBlur}
             @input=${this._handleInput}

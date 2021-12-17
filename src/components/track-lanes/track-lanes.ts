@@ -122,17 +122,14 @@ export class TrackLanes extends LitElement {
   override willUpdate(changedProperties: Map<string, any>) {
     const prevMidiNotes = changedProperties.get('midiNotes') ?? {};
     this.tracks.forEach((track: Track) => {
-      if (!track.midiInputId) {
-        return;
-      }
-
-      const prevNotes = prevMidiNotes[track.midiInputId] ?? {};
-      const notes = this.midiNotes[track.midiInputId] ?? {};
+      const noteKey = track.midiInputId ?? 'keyboard';
+      const prevNotes = prevMidiNotes[noteKey] ?? {};
+      const notes = this.midiNotes[noteKey] ?? {};
       Object.entries(notes).forEach(([key, velocity]) => {
         const note = Number(key);
         const frequency = TrackLanes.midiNumberToFrequency(note);
         const gain = velocity / 127;
-        if (!prevNotes[key] ) {
+        if (!prevNotes[key]) {
           this._startInstrument(track.instrument, { frequency, gain });
         }
       });

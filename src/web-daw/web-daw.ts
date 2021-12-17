@@ -21,6 +21,10 @@ export class WebDAW extends LitElement {
 
   static MIDI_NOTE_OFF = 128;
 
+  static KEYBOARD_NOTE_ON = 'keydown';
+
+  static KEYBOARD_NOTE_OFF = 'keyup';
+
   static findMidiPortById(ports: MIDIPort[], id: string): number {
     return ports.findIndex(port => port.id === id);
   }
@@ -61,6 +65,18 @@ export class WebDAW extends LitElement {
     super();
 
     this._initMIDIAccess();
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('keydown', this._handleKeyboardInput);
+    window.addEventListener('keyup', this._handleKeyboardInput);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('keydown', this._handleKeyboardInput);
+    window.removeEventListener('keyup', this._handleKeyboardInput);
   }
 
   @state()
@@ -157,6 +173,70 @@ export class WebDAW extends LitElement {
           ...updatedMidiInputNotes
         } = updatedMidiNotes[midiInput.id];
         updatedMidiNotes[midiInput.id] = updatedMidiInputNotes;
+        this.midiNotes = updatedMidiNotes;
+        break;
+      }
+    }
+  }
+
+  private _handleKeyboardInput(event: KeyboardEvent) {
+    let offset;
+    switch (event.key) {
+      case 'z':
+        offset = 0; break;
+      case 's':
+        offset = 1; break;
+      case 'x':
+        offset = 2; break;
+      case 'd':
+        offset = 3; break;
+      case 'c':
+        offset = 4; break;
+      case 'v':
+        offset = 5; break;
+      case 'g':
+        offset = 6; break;
+      case 'b':
+        offset = 7; break;
+      case 'h':
+        offset = 8; break;
+      case 'n':
+        offset = 9; break;
+      case 'j':
+        offset = 10; break;
+      case 'm':
+        offset = 11; break;
+    }
+
+    if (typeof offset === 'undefined') {
+      return;
+    }
+
+    event.preventDefault();
+
+    const octave = 3;
+    const velocity = 127;
+    const note = octave * 12 + offset;
+    const updatedMidiNotes = { ...this.midiNotes };
+    const key = note.toString();
+
+    switch (event.type) {
+      case WebDAW.KEYBOARD_NOTE_ON: {
+        const updatedMidiInputNotes = {
+          ...updatedMidiNotes.keyboard,
+          [key]: velocity,
+        };
+        updatedMidiNotes.keyboard = updatedMidiInputNotes;
+        this.midiNotes = updatedMidiNotes;
+        break;
+      }
+
+      case WebDAW.KEYBOARD_NOTE_OFF: {
+        const {
+          [key]: keyToRemove,
+          ...updatedMidiInputNotes
+        } = updatedMidiNotes.keyboard;
+        updatedMidiNotes.keyboard = updatedMidiInputNotes;
         this.midiNotes = updatedMidiNotes;
         break;
       }

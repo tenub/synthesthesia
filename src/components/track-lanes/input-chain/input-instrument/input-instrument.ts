@@ -87,14 +87,14 @@ export class InputInstrument extends LitElement {
       <control-knob
         size="medium"
         name="oscillator.type"
-        value="1"
-        min="0"
-        max="3"
+        value=${1}
+        min=${0}
+        max=${3}
         .valueMap=${[
-          { displayValue: 'Sin', value: 'sine' },
-          { displayValue: 'Tri', value: 'triangle' },
-          { displayValue: 'Squ', value: 'square' },
-          { displayValue: 'Saw', value: 'sawtooth' },
+          'sine',
+          'triangle',
+          'square',
+          'sawtooth',
         ]}
       >
         Oscillator Type
@@ -108,9 +108,9 @@ export class InputInstrument extends LitElement {
         size="medium"
         name="oscillator.type"
         value=${this.instrument.oscillator.type}
-        min="0.1"
-        max="20"
-        step="0.01"
+        min=${0.1}
+        max=${20}
+        step=${0.01}
       >
         Attribute
       </control-knob>

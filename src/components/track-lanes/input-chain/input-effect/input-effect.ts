@@ -94,7 +94,13 @@ export class InputEffect extends LitElement {
     const attributes = this.effect.toneEffect.get();
     const flattenedAttributes = flattenToneAttributes(attributes);
     return effectControls.parameters.map((parameter: InputEffectLibraryItemParameter) => {
-      const { [parameter.id]: parameterValue }: { [key: string]: any } = flattenedAttributes;
+      let { [parameter.id]: parameterValue }: { [key: string]: any } = flattenedAttributes;
+      if (typeof parameterValue === 'undefined') {
+        parameterValue = parameter.min;
+      } else if (parameter.valueMap) {
+        parameterValue = parameter.valueMap.findIndex(value => value === parameterValue);
+      }
+
       return html`
         <control-knob
           size="medium"
