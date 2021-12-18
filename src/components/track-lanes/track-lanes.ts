@@ -381,7 +381,12 @@ export class TrackLanes extends LitElement {
 
     return html`
       ${this._renderTrackLanes()}
-      <piano-roll .pattern=${selectedPattern}></piano-roll>
+
+      <piano-roll
+        .inputNotes=${this.inputNotes}
+        .pattern=${selectedPattern}
+      ></piano-roll>
+
       <input-chain .track=${selectedTrack}></input-chain>
     `;
   }

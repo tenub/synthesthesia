@@ -27,6 +27,7 @@ export class SoundLibrary extends LitElement {
 
     :host::-webkit-scrollbar {
       background: none;
+      height: 12px;
       width: 12px;
     }
 

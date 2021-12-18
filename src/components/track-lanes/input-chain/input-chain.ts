@@ -33,6 +33,7 @@ export class InputChain extends LitElement {
     ::-webkit-scrollbar {
       background: none;
       height: 12px;
+      width: 12px;
     }
 
     ::-webkit-scrollbar-thumb {

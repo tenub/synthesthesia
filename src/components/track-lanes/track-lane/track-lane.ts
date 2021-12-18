@@ -27,7 +27,6 @@ export class TrackLane extends LitElement {
     .track {
       background-color: var(--background-color-3);
       border-bottom: 1px solid var(--background-color-2);
-      border-top: 1px solid hsl(0, 0%, 25%);
       display: flex;
       height: 96px;
       justify-content: flex-end;
@@ -37,6 +36,45 @@ export class TrackLane extends LitElement {
     .track__controls {
       background-color: var(--background-color-4);
       padding: 0.5em 1em;
+    }
+
+    .track__timeline {
+      padding: 0.5em 1em;
+      width: 100%;
+    }
+
+    .track__patterns {
+      align-items: flex-start;
+      display: inline-flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      height: 100%;
+    }
+
+    .track__pattern {
+      background-color: var(--background-color-4);
+      border: 1px dashed var(--background-color-2);
+      border-radius: var(--size-increment);
+      box-shadow: 0 0.125em 0.5em var(--background-color-2);
+      font-size: 0.75em;
+      padding: 0.5em 1em;
+    }
+
+    .track__pattern:hover {
+      background-color: var(--background-color-5);
+    }
+
+    .add-pattern {
+      align-items: center;
+      background: none;
+      border: none;
+      color: var(--main-color);
+      display: flex;
+      font-family: var(--main-font-family);
+      font-size: var(--main-font-size);
+      margin: 0;
+      padding: 0.25em;
     }
 
     .track__label {
@@ -63,7 +101,6 @@ export class TrackLane extends LitElement {
     }
 
     .track__midi {
-      margin-top: calc(-1 / 6 * 1em);
       padding: 0.5em 1em;
     }
 
@@ -71,7 +108,8 @@ export class TrackLane extends LitElement {
       background: none;
       border: none;
       color: var(--main-color);
-      font-size: 12px;
+      display: block;
+      font-size: 0.75em;
     }
 
     .track__midi-input:focus {
@@ -84,30 +122,7 @@ export class TrackLane extends LitElement {
 
     .track__output {
       background-color: var(--background-color-4);
-      padding: 0.5em 1em;
-    }
-
-    .track__patterns {
-      display: flex;
-      flex-direction: column;
-      flex-wrap: wrap;
-      width: 100%;
-    }
-
-    .track__pattern {
-      padding: 0.5em;
-    }
-
-    .add-pattern {
-      align-items: center;
-      background: none;
-      border: none;
-      color: var(--main-color);
-      display: flex;
-      font-family: var(--main-font-family);
-      font-size: var(--main-font-size);
-      margin: 0;
-      padding: 0.25em;
+      padding: 0.5em 0.5em 0.5em 1em;
     }
   `;
 
@@ -259,16 +274,18 @@ export class TrackLane extends LitElement {
         class="track"
         @click=${this._dispatchSelectTrack}
       >
-        <div class="track__patterns">
-          ${this.track.patterns.map(this._renderPattern)}
+        <div class="track__timeline">
+          <div class="track__patterns">
+            ${this.track.patterns.map(this._renderPattern)}
 
-          <button
-            class="add-pattern"
-            @click=${this._addPattern}
-          >
-            <custom-icon>add</custom-icon>
-            Add Pattern
-          </button>
+            <button
+              class="add-pattern"
+              @click=${this._addPattern}
+            >
+              <custom-icon>add</custom-icon>
+              Add Pattern
+            </button>
+          </div>
         </div>
 
         <div class="track__controls">
