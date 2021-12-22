@@ -29,6 +29,13 @@ export function flattenToneAttributes(
   return obj;
 }
 
+export function formatBeats(beats: number): string {
+  const sectionNumber = Math.floor(beats / 16) + 1;
+  const barNumber = Math.floor((beats % 16) / 4) + 1;
+  const beatNumber = (beats % 4) + 1;
+  return `${sectionNumber}.${barNumber}.${beatNumber}`
+}
+
 export const octaveMap = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
 export const noteMap = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

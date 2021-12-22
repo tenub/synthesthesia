@@ -41,6 +41,9 @@ export class WebDAW extends LitElement {
       --background-color-3: hsl(0, 0%, calc(3 * var(--hsl-increment)));
       --background-color-4: hsl(0, 0%, calc(4 * var(--hsl-increment)));
       --background-color-5: hsl(0, 0%, calc(5 * var(--hsl-increment)));
+      --background-color-6: hsl(0, 0%, calc(6 * var(--hsl-increment)));
+      --background-color-7: hsl(0, 0%, calc(7 * var(--hsl-increment)));
+      --background-color-8: hsl(0, 0%, calc(8 * var(--hsl-increment)));
       --box-sizing: border-box;
       --hsl-increment: 6.25%;
       --main-color: white;

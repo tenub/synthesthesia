@@ -52,7 +52,7 @@ export class TrackLanes extends LitElement {
       display: grid;
       grid-column: 2 / 2;
       grid-row: 2 / 2;
-      grid-template-rows: [tracks] calc(100vh - 640px) [piano-roll] 320px [chain] 256px;
+      grid-template-rows: [tracks] calc(100vh - 832px) [piano-roll] 512px [chain] 256px;
       position: relative;
       z-index: 1;
     }
