@@ -26,6 +26,13 @@ export interface TrackEffect {
 export interface TrackPattern {
   id: number,
   name: string,
+  notes: TrackPatternNote[],
+}
+
+export interface TrackPatternNote {
+  noteIndex: number,
+  startTime: number,
+  noteLength: number,
 }
 
 export interface TrackSelectedEvent extends CustomEvent {

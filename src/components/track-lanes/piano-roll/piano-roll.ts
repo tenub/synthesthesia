@@ -2,15 +2,18 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { styleMap } from 'lit/directives/style-map.js';
 import * as Tone from 'tone';
 
 import { octaveMap, noteMap, formatBeats } from '../../../helpers';
 import { MIDINoteInput, MIDINotes } from '../../../web-daw/web-daw.d';
 
-import { Track, TrackPattern } from '../track-lane/track-lane.d';
+import { Track, TrackPattern, TrackPatternNote } from '../track-lane/track-lane.d';
 
 @customElement('piano-roll')
 export class PianoRoll extends LitElement {
+  static numOctaves = 9;
+
   static gridSize = 24;
 
   static keyWidth = 64;
@@ -154,6 +157,30 @@ export class PianoRoll extends LitElement {
       top: ${PianoRoll.gridSize}px;
       width: calc(100% - ${PianoRoll.keyWidth}px);
     }
+
+    .pattern__notes {
+      height: 100%;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 100%;
+    }
+
+    .pattern__note {
+      align-items: center;
+      background-color: red;
+      color: var(--main-color);
+      display: flex;
+      font-size: 12px;
+      height: ${PianoRoll.gridSize}px;
+      padding: 0 0.25em;
+      position: absolute;
+      user-select: none;
+    }
+
+    .pattern__note--isResizing {
+      cursor: col-resize;
+    }
   `;
 
   @property({ type: Object })
@@ -161,6 +188,18 @@ export class PianoRoll extends LitElement {
 
   @property({ type: Object })
   pattern: TrackPattern;
+
+  @property({ type: Object })
+  track: Track;
+
+  @state()
+  _isMovingNote = false;
+
+  @state()
+  _isHoveringNoteResize = false;
+
+  @state()
+  _workingNoteIndex = -1;
 
   _rulerRef = createRef<HTMLDivElement>();
 
@@ -172,9 +211,18 @@ export class PianoRoll extends LitElement {
 
   _pianoKeysRef = createRef<HTMLDivElement>();
 
+  constructor() {
+    super();
+
+    this.addEventListener('pointerdown', this._handleGridPointerDown);
+    this.addEventListener('pointermove', this._handleGridPointerMove);
+    this.addEventListener('pointerup', this._handleGridPointerUp);
+  }
+
   override updated(changedProperties: Map<string, any>): void {
+    const hasPrevPattern = changedProperties.has('pattern');
     const prevPattern = changedProperties.get('pattern');
-    if (!prevPattern && this.pattern) {
+    if (hasPrevPattern && !prevPattern && this.pattern) {
       this._drawRuler();
       this._drawGrid();
     }
@@ -182,14 +230,162 @@ export class PianoRoll extends LitElement {
 
   private _handleDblClick = (event: PointerEvent) => {
     const { x, y } = event;
+    const { left, top } = this._getGridCoords(x, y);
+    const noteIndex = Math.floor(top / PianoRoll.gridSize);
+    const timeStep = Math.floor(left / PianoRoll.gridSize);
+
+    const updatedPatterns = [...this.track.patterns];
+    const patternIndex = updatedPatterns.findIndex((pattern: TrackPattern) =>
+      pattern.id === this.pattern.id);
+
+    const { notes: updatedNotes } = updatedPatterns[patternIndex];
+    const foundNoteIndex = updatedNotes.findIndex((note: TrackPatternNote) =>
+      note.noteIndex === noteIndex);
+    if (foundNoteIndex > -1) {
+      updatedNotes.splice(foundNoteIndex, 1);
+    } else {
+      updatedNotes.push({ noteIndex, startTime: timeStep, noteLength: 1 });
+    }
+
+    updatedPatterns[patternIndex].notes = updatedNotes;
+
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: this.track.id,
+        attributes: {
+          patterns: updatedPatterns,
+        },
+      },
+    }));
+  }
+
+  private _handleGridPointerDown = (event: PointerEvent) => {
+    if (!this.pattern) {
+      return;
+    }
+
+    const { x, y } = event;
+    const { left, top } = this._getGridCoords(x, y);
+    const foundNoteIndex = this._getHoveredNote(left, top);
+    this._workingNoteIndex = foundNoteIndex;
+
+    const foundNote = this.pattern.notes[foundNoteIndex];
+    const startTimeX = foundNote.startTime * PianoRoll.gridSize;
+    const endTimeX = (foundNote.startTime + foundNote.noteLength) * PianoRoll.gridSize;
+    this._isMovingNote = left - startTimeX > 8 && endTimeX - left > 8;
+  }
+
+  private _handleGridPointerMove(event: PointerEvent) {
+    if (!this.pattern) {
+      return;
+    }
+
+    const { x, y } = event;
+    this._handleHoverNoteState(x, y);
+
+    if (this._workingNoteIndex > -1) {
+      this._handleNoteUpdate(x, y);
+    }
+  }
+
+  private _handleHoverNoteState(x: number, y: number) {
+    const { left, top } = this._getGridCoords(x, y);
+    const foundNoteIndex = this._getHoveredNote(left, top);
+    if (foundNoteIndex < 0) {
+      return;
+    }
+
+    const foundNote = this.pattern.notes[foundNoteIndex];
+    const startTimeX = foundNote.startTime * PianoRoll.gridSize;
+    const endTimeX = (foundNote.startTime + foundNote.noteLength) * PianoRoll.gridSize;
+    this._isHoveringNoteResize = left - startTimeX <= 8 || endTimeX - left <= 8;
+  }
+
+  private _handleNoteUpdate(x: number, y: number) {
+    const { left, top } = this._getGridCoords(x, y);
+    const notes = this.pattern.notes.slice();
+    const workingNote = notes[this._workingNoteIndex];
+    const noteStartX = workingNote.startTime * PianoRoll.gridSize;
+    const noteEndX = (workingNote.startTime + workingNote.noteLength) * PianoRoll.gridSize;
+
+    const updatedPatterns = [...this.track.patterns];
+    const patternIndex = updatedPatterns.findIndex((pattern: TrackPattern) =>
+      pattern.id === this.pattern.id);
+
+    const { notes: updatedNotes } = this.pattern;
+    const isUpdatingStartTime = left < (noteStartX + noteEndX) / 2;
+
+    if (this._isMovingNote) {
+      const updatedStartTime = Math.round(left / PianoRoll.gridSize);
+      const updatedNoteIndex = Math.round(top / PianoRoll.gridSize);
+      updatedNotes[this._workingNoteIndex] = {
+        ...workingNote,
+        noteIndex: updatedNoteIndex,
+        startTime: updatedStartTime,
+      };
+    } else if (isUpdatingStartTime) {
+      const updatedStartTime = Math.round(left / PianoRoll.gridSize);
+      const updatedNoteLength = workingNote.noteLength + (workingNote.startTime - updatedStartTime);
+      if (updatedNoteLength <= 0) {
+        return;
+      }
+
+      updatedNotes[this._workingNoteIndex] = {
+        ...workingNote,
+        startTime: updatedStartTime,
+        noteLength: updatedNoteLength,
+      };
+    } else {
+      const updatedNoteLength = Math.round(left / PianoRoll.gridSize) - workingNote.startTime;
+      updatedNotes[this._workingNoteIndex] = {
+        ...workingNote,
+        noteLength: updatedNoteLength,
+      };
+    }
+
+    updatedPatterns[patternIndex].notes = updatedNotes;
+
+    this.dispatchEvent(new CustomEvent('trackupdated', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        id: this.track.id,
+        attributes: {
+          patterns: updatedPatterns,
+        },
+      },
+    }));
+  }
+
+  private _handleGridPointerUp = (event: PointerEvent) => {
+    if (!this.pattern) {
+      return;
+    }
+
+    this._workingNoteIndex = -1;
+    this._isMovingNote = false;
+  }
+
+  private _getHoveredNote(left: number, top: number) {
+    const noteIndex = Math.floor(top / PianoRoll.gridSize);
+    const foundNoteIndex = this.pattern.notes.findIndex((note: TrackPatternNote) =>
+      note.noteIndex === noteIndex
+        && left >= note.startTime * PianoRoll.gridSize
+        && left <= (note.startTime + note.noteLength) * PianoRoll.gridSize);
+    return foundNoteIndex;
+  }
+
+  private _getGridCoords(x: number, y: number) {
     const gridElement = this._gridRef.value! as HTMLDivElement;
     const { offsetHeight, scrollLeft, scrollTop } = gridElement;
     const { left: rectLeft, top: rectTop } = gridElement.getBoundingClientRect();
     const left = x - rectLeft + scrollLeft;
     const top = rectTop + offsetHeight - y - scrollTop;
-    const midiNote = Math.floor(top / PianoRoll.gridSize);
-    const timeStep = Math.floor(left / PianoRoll.gridSize);
-    // TODO
+    return { left, top };
   }
 
   private _handleScroll = (event: WheelEvent) => {
@@ -242,7 +438,7 @@ export class PianoRoll extends LitElement {
     context.stroke();
   }
 
-  private _drawGrid() {
+  private _drawGrid(): void {
     const gridSize = PianoRoll.gridSize * window.devicePixelRatio;
     const gridCanvasElement = this._gridCanvasRef.value! as HTMLCanvasElement;
     const context = gridCanvasElement.getContext('2d');
@@ -254,50 +450,39 @@ export class PianoRoll extends LitElement {
     context.strokeStyle = 'hsla(0, 0%, 100%, 0.0625)';
     context.fillStyle = 'hsla(0, 0%, 100%, 0.09375)';
 
-    for (let x = gridSize; x < width; x += gridSize) {
+    const numTicks = 4 ** 3;
+    for (let x = 1; x < numTicks; x++) {
       context.beginPath();
-      if (x % (gridSize * 16) === 0) {
-        context.rect(0.5 + (x - 1.5), 0, 3, height);
+
+      if (x % 16 === 0) {
+        context.rect(0.5 + (x * gridSize - 1.5), 0, 3, height);
         context.fill();
-      } else if (x % (gridSize * 4) === 0) {
-        this._drawLine(context, x + 1, width, height, 'vertical');
-        context.stroke();
-      } else {
-        this._drawLine(context, x, width, height, 'vertical');
-        context.stroke();
+        continue;
       }
+
+      const p = 0.5 + x * gridSize;
+
+      if (x % 4 === 0) {
+        context.moveTo(p + 1, 0);
+        context.lineTo(p + 1, height);
+      }
+
+      context.moveTo(p, 0);
+      context.lineTo(p, height);
+
+      context.stroke();
     }
 
     context.beginPath();
 
-    for (let y = gridSize; y < height; y += gridSize) {
-      const noteStep = y / gridSize;
-      if ([1, 3, 6, 8, 10].includes(noteStep % 12)) {
-        context.rect(0, y, width, gridSize);
+    const numNotes = PianoRoll.numOctaves * 12;
+    for (let y = 0; y < numNotes; y++) {
+      if ([0, 2, 4, 6, 7, 9, 11].includes(y % 12)) {
+        context.rect(0, y * gridSize, width, gridSize);
       }
     }
 
     context.fill();
-  }
-
-  private _drawLine(
-    context: CanvasRenderingContext2D,
-    position: number,
-    width: number,
-    height: number,
-    direction: string,
-  ) {
-    const p = 0.5 + position;
-    switch (direction) {
-      case 'horizontal':
-        context.moveTo(0, p);
-        context.lineTo(width, p);
-        break;
-      case 'vertical':
-        context.moveTo(p, 0);
-        context.lineTo(p, height);
-        break;
-    }
   }
 
   private _renderPattern() {
@@ -335,10 +520,10 @@ export class PianoRoll extends LitElement {
           return html`
             <div class="piano-roll__octave">
               ${noteMap.map((note: string, index: number) => {
-                const midiNote = octave * 12 + index;
-                const playedNote = activeInputNotes[midiNote];
+                const noteIndex = octave * 12 + index;
+                const playedNote = activeInputNotes[noteIndex];
                 const isNotePlaying = typeof playedNote !== 'undefined';
-                const [letter, symbol] = note.split('');
+                const [letter] = note.split('');
                 const isC = index % 12 === 0;
                 const noteClasses = {
                   'piano-roll__note': true,
@@ -375,6 +560,30 @@ export class PianoRoll extends LitElement {
         @dblclick=${this._handleDblClick}
         @wheel=${this._handleScroll}
       >
+        <div class="pattern__notes">
+          ${this.pattern.notes.map((note: TrackPatternNote) => {
+            const noteOctave = Math.floor(note.noteIndex / 12);
+            const noteName = noteMap[note.noteIndex % 12];
+            const [noteLetter, noteSymbol] = noteName.split('');
+            const noteClasses = {
+              'pattern__note': true,
+              'pattern__note--isResizing': this._isHoveringNoteResize,
+            }
+            const noteStyles = {
+              bottom: `${note.noteIndex * PianoRoll.gridSize}px`,
+              left: `${note.startTime * PianoRoll.gridSize}px`,
+              width: `${note.noteLength * PianoRoll.gridSize}px`,
+            };
+            return html`
+              <div
+                class=${classMap(noteClasses)}
+                style=${styleMap(noteStyles)}
+              >
+                ${noteLetter}${noteSymbol}${noteOctave}
+              </div>
+            `;
+          })}
+        </div>
         <canvas
           ${ref(this._gridCanvasRef)}
           class="piano-roll__grid-canvas"

@@ -235,6 +235,7 @@ export class TrackLane extends LitElement {
     const newPattern = {
       id: newPatternId,
       name: newPatternName,
+      notes: [],
     } as TrackPattern;
     this._dispatchUpdateTrack({
       patterns: [

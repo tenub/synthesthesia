@@ -334,6 +334,20 @@ export class TrackLanes extends LitElement {
     this.selectedPatternIndex = patternIndex;
   }
 
+  private _handleAddPattern(event: CustomEvent) {
+    const { index: patternToAddIndex, pattern: patternToAdd } = event.detail;
+    const updatedTracks = this.tracks.slice();
+    updatedTracks[this.selectedTrackIndex].patterns.splice(patternToAddIndex, 0, patternToAdd);
+    this.tracks = updatedTracks;
+  }
+
+  private _handleRemovePattern = (event: CustomEvent) => {
+    const { index: patternIndex } = event.detail;
+    const updatedTracks = this.tracks.slice();
+    updatedTracks[this.selectedTrackIndex].patterns.splice(patternIndex, 1);
+    this.tracks = updatedTracks;
+  }
+
   private _renderTrackLanes = () => {
     const trackCount = this.tracks.length;
     const isTracksEmpty = trackCount === 0;
@@ -384,6 +398,7 @@ export class TrackLanes extends LitElement {
 
       <piano-roll
         .inputNotes=${this.inputNotes}
+        .track=${selectedTrack}
         .pattern=${selectedPattern}
       ></piano-roll>
 
