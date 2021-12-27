@@ -20,6 +20,7 @@ export class InputEffect extends LitElement {
   static override styles = css`
     :host {
       box-sizing: var(--box-sizing);
+      flex-grow: 1;
     }
 
     :host *,
@@ -45,10 +46,11 @@ export class InputEffect extends LitElement {
     }
 
     .effect__controls {
-      display: grid;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
       gap: 0.25em 1em;
-      grid-template-columns: repeat(10, 96px);
-      grid-template-rows: repeat(2, 64px);
+      height: calc(126px + 0.5em);
     }
   `;
 

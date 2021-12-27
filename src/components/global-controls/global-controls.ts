@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import * as Tone from 'tone';
 
 import '../shared/custom-icon';
 
@@ -62,8 +63,21 @@ export class GlobalControls extends LitElement {
     }
   `;
 
+  override connectedCallback(): void {
+    super.connectedCallback();
+    Tone.Transport.set({ bpm: this.bpm });
+  }
+
   @state()
   bpm = 120;
+
+  private _handlePlay() {
+    Tone.Transport.start();
+  }
+
+  private _handleStop() {
+    Tone.Transport.stop();
+  }
 
   override render() {
     return html`
@@ -74,13 +88,13 @@ export class GlobalControls extends LitElement {
       </div>
 
       <div class="controls--center">
-        <button>
+        <button @click=${this._handlePlay}>
           <custom-icon>
             play_arrow
           </custom-icon>
         </button>
 
-        <button>
+        <button @click=${this._handleStop}>
           <custom-icon>
             stop
           </custom-icon>

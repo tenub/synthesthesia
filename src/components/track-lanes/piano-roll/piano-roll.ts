@@ -5,7 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import * as Tone from 'tone';
 
-import { octaveMap, noteMap, formatBeats } from '../../../helpers';
+import { octaveMap, noteMap, midiNumberToFrequency, formatBeats } from '../../../helpers';
 import { MIDINoteInput, MIDINotes } from '../../../web-daw/web-daw.d';
 
 import { Track, TrackPattern, TrackPatternNote } from '../track-lane/track-lane.d';
@@ -187,10 +187,10 @@ export class PianoRoll extends LitElement {
   inputNotes: MIDINoteInput;
 
   @property({ type: Object })
-  pattern: TrackPattern;
+  track: Track;
 
   @property({ type: Object })
-  track: Track;
+  pattern: TrackPattern;
 
   @state()
   _isMovingNote = false;
@@ -220,12 +220,23 @@ export class PianoRoll extends LitElement {
   }
 
   override updated(changedProperties: Map<string, any>): void {
-    const hasPrevPattern = changedProperties.has('pattern');
+    const hasPrevPattern = changedProperties.has('pattern')
     const prevPattern = changedProperties.get('pattern');
-    if (hasPrevPattern && !prevPattern && this.pattern) {
+    if ((!hasPrevPattern || prevPattern === null) && this.pattern !== null) {
       this._drawRuler();
       this._drawGrid();
     }
+  }
+
+  get mergedInputNotes() {
+    const inputNotes = Object.values(this.inputNotes);
+    const mergedInputNotes = inputNotes.reduce((
+      mergedNotes: MIDINotes,
+      notes: MIDINotes,
+    ) => {
+      return { ...mergedNotes, ...notes };
+    }, {});
+    return mergedInputNotes;
   }
 
   private _handleDblClick = (event: PointerEvent) => {
@@ -234,29 +245,37 @@ export class PianoRoll extends LitElement {
     const noteIndex = Math.floor(top / PianoRoll.gridSize);
     const timeStep = Math.floor(left / PianoRoll.gridSize);
 
-    const updatedPatterns = [...this.track.patterns];
-    const patternIndex = updatedPatterns.findIndex((pattern: TrackPattern) =>
-      pattern.id === this.pattern.id);
-
-    const { notes: updatedNotes } = updatedPatterns[patternIndex];
-    const foundNoteIndex = updatedNotes.findIndex((note: TrackPatternNote) =>
-      note.noteIndex === noteIndex);
+    const { notes: updatedNotes } = { ...this.pattern };
+    const foundNoteIndex = this._getHoveredNote(left, top);
     if (foundNoteIndex > -1) {
+      const { toneEventId } = updatedNotes[foundNoteIndex];
+      Tone.Transport.clear(toneEventId);
       updatedNotes.splice(foundNoteIndex, 1);
     } else {
-      updatedNotes.push({ noteIndex, startTime: timeStep, noteLength: 1 });
+      const { instrument } = this.track;
+      const frequency = midiNumberToFrequency(noteIndex);
+      const { bpm } = Tone.Transport.get();
+      const offsetTime = timeStep * 60 / (16 * bpm);
+      const toneEventId = Tone.Transport.scheduleRepeat((time: number) => {
+        instrument.toneInstrument.triggerAttackRelease(frequency, '4n');
+      }, '1:0:0', offsetTime);
+
+      updatedNotes.push({
+        noteIndex,
+        startTime: timeStep,
+        noteLength: 4,
+        toneEventId,
+      });
     }
 
-    updatedPatterns[patternIndex].notes = updatedNotes;
-
-    this.dispatchEvent(new CustomEvent('trackupdated', {
+    this.dispatchEvent(new CustomEvent('patternupdated', {
       bubbles: true,
       composed: true,
       cancelable: true,
       detail: {
-        id: this.track.id,
+        id: this.pattern.id,
         attributes: {
-          patterns: updatedPatterns,
+          notes: updatedNotes,
         },
       },
     }));
@@ -271,6 +290,9 @@ export class PianoRoll extends LitElement {
     const { left, top } = this._getGridCoords(x, y);
     const foundNoteIndex = this._getHoveredNote(left, top);
     this._workingNoteIndex = foundNoteIndex;
+    if (foundNoteIndex < 0) {
+      return;
+    }
 
     const foundNote = this.pattern.notes[foundNoteIndex];
     const startTimeX = foundNote.startTime * PianoRoll.gridSize;
@@ -286,9 +308,11 @@ export class PianoRoll extends LitElement {
     const { x, y } = event;
     this._handleHoverNoteState(x, y);
 
-    if (this._workingNoteIndex > -1) {
-      this._handleNoteUpdate(x, y);
+    if (this._workingNoteIndex < 0) {
+      return;
     }
+
+    this._handleNoteUpdate(x, y);
   }
 
   private _handleHoverNoteState(x: number, y: number) {
@@ -306,16 +330,12 @@ export class PianoRoll extends LitElement {
 
   private _handleNoteUpdate(x: number, y: number) {
     const { left, top } = this._getGridCoords(x, y);
-    const notes = this.pattern.notes.slice();
+    const notes = [...this.pattern.notes];
     const workingNote = notes[this._workingNoteIndex];
     const noteStartX = workingNote.startTime * PianoRoll.gridSize;
     const noteEndX = (workingNote.startTime + workingNote.noteLength) * PianoRoll.gridSize;
 
-    const updatedPatterns = [...this.track.patterns];
-    const patternIndex = updatedPatterns.findIndex((pattern: TrackPattern) =>
-      pattern.id === this.pattern.id);
-
-    const { notes: updatedNotes } = this.pattern;
+    const { notes: updatedNotes } = { ...this.pattern };
     const isUpdatingStartTime = left < (noteStartX + noteEndX) / 2;
 
     if (this._isMovingNote) {
@@ -346,22 +366,20 @@ export class PianoRoll extends LitElement {
       };
     }
 
-    updatedPatterns[patternIndex].notes = updatedNotes;
-
-    this.dispatchEvent(new CustomEvent('trackupdated', {
+    this.dispatchEvent(new CustomEvent('patternupdated', {
       bubbles: true,
       composed: true,
       cancelable: true,
       detail: {
-        id: this.track.id,
+        id: this.pattern.id,
         attributes: {
-          patterns: updatedPatterns,
+          notes: updatedNotes,
         },
       },
     }));
   }
 
-  private _handleGridPointerUp = (event: PointerEvent) => {
+  private _handleGridPointerUp = () => {
     if (!this.pattern) {
       return;
     }
@@ -447,32 +465,8 @@ export class PianoRoll extends LitElement {
     gridCanvasElement.style.height = `${height / window.devicePixelRatio}px`;
     gridCanvasElement.style.width = `${width / window.devicePixelRatio}px`;
 
-    context.strokeStyle = 'hsla(0, 0%, 100%, 0.0625)';
-    context.fillStyle = 'hsla(0, 0%, 100%, 0.09375)';
-
-    const numTicks = 4 ** 3;
-    for (let x = 1; x < numTicks; x++) {
-      context.beginPath();
-
-      if (x % 16 === 0) {
-        context.rect(0.5 + (x * gridSize - 1.5), 0, 3, height);
-        context.fill();
-        continue;
-      }
-
-      const p = 0.5 + x * gridSize;
-
-      if (x % 4 === 0) {
-        context.moveTo(p + 1, 0);
-        context.lineTo(p + 1, height);
-      }
-
-      context.moveTo(p, 0);
-      context.lineTo(p, height);
-
-      context.stroke();
-    }
-
+    // draw note lines
+    context.fillStyle = 'hsl(0, 0%, 18.75%)';
     context.beginPath();
 
     const numNotes = PianoRoll.numOctaves * 12;
@@ -483,6 +477,28 @@ export class PianoRoll extends LitElement {
     }
 
     context.fill();
+
+    // draw time lines
+    context.strokeStyle = 'hsl(0, 0%, 12.5%)';
+
+    const numTicks = 4 ** 3;
+    for (let x = 1; x < numTicks; x++) {
+      context.beginPath();
+
+      if (x % 16 === 0) {
+        context.fillStyle = 'hsl(0, 0%, 12.5%)';
+        context.rect(0.5 + (x * gridSize - 1.5), 0, 3, height);
+        context.fill();
+        continue;
+      }
+
+      if (x % 4 === 0) {
+        const p = 0.5 + x * gridSize;
+        context.moveTo(p, 0);
+        context.lineTo(p, height);
+        context.stroke();
+      }
+    }
   }
 
   private _renderPattern() {
@@ -490,7 +506,7 @@ export class PianoRoll extends LitElement {
     return html`
       ${this._renderPatternRuler()}
       ${this._renderPianoKeys(mergedInputNotes)}
-      ${this._renderPatternGrid(mergedInputNotes)}
+      ${this._renderPatternGrid()}
     `;
   }
 
@@ -552,7 +568,7 @@ export class PianoRoll extends LitElement {
     `;
   }
 
-  private _renderPatternGrid(activeInputNotes: MIDINotes) {
+  private _renderPatternGrid() {
     return html`
       <div
         ${ref(this._gridRef)}
@@ -600,30 +616,15 @@ export class PianoRoll extends LitElement {
     `;
   }
 
-  get isPatternDefined() {
-    const isPatternDefined = typeof this.pattern !== 'undefined';
-    return isPatternDefined;
-  }
-
-  get mergedInputNotes() {
-    const inputNotes = Object.values(this.inputNotes);
-    const mergedInputNotes = inputNotes.reduce((
-      mergedNotes: MIDINotes,
-      notes: MIDINotes,
-    ) => {
-      return { ...mergedNotes, ...notes };
-    }, {});
-    return mergedInputNotes;
-  }
-
   override render() {
+    const isPatternDefined = this.pattern !== null;
     const classes = {
       'piano-roll': true,
-      'piano-roll--isEmpty': !this.isPatternDefined,
+      'piano-roll--isEmpty': !isPatternDefined,
     };
     return html`
       <div class=${classMap(classes)}>
-        ${this.isPatternDefined ? this._renderPattern() : this._renderNullState()}
+        ${isPatternDefined ? this._renderPattern() : this._renderNullState()}
       </div>
     `;
   }

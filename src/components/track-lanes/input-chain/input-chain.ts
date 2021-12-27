@@ -44,10 +44,9 @@ export class InputChain extends LitElement {
     }
 
     .input-chain:not(.input-chain--isEmpty) {
-      display: grid;
+      display: flex;
+      flex-grow: 1;
       gap: 0 0.5em;
-      grid-template-columns: [instrument-col] auto [effects-col] auto;
-      grid-template-rows: [chain-row] max-content;
     }
 
     .input-chain--isEmpty {
@@ -74,14 +73,12 @@ export class InputChain extends LitElement {
     }
 
     .input-chain__instrument {
-      grid-column: 1 / 1;
-      grid-row: 2 / 2;
+
     }
 
     .input-chain__effects {
-      grid-column: 2 / 2;
-      grid-row: 2 / 2;
-      overflow: auto;
+      flex-grow: 1;
+      overflow-x: auto;
     }
 
     .input-chain__effect-placeholder {
@@ -119,7 +116,6 @@ export class InputChain extends LitElement {
     this.addEventListener('dragend', this._handleDragEnded);
     this.addEventListener('dragleave', this._handleDragEnded);
     this.addEventListener('drop', this._handleDrop);
-    this.addEventListener('trackselected', this._handleTrackSelected);
   }
 
   private _defineInstrument(id: string, name: string): any {
@@ -259,11 +255,6 @@ export class InputChain extends LitElement {
     this._closestDropIndex = -1;
   }
 
-  private _handleTrackSelected = (event: CustomEvent) => {
-    const selectedTrack = event.detail;
-    this.track = selectedTrack;
-  }
-
   private _renderInstrument() {
     if (!this.track.instrument) {
       return this._renderChainPlaceholder('instrument');
@@ -298,7 +289,7 @@ export class InputChain extends LitElement {
   }
 
   private _renderChain = () => {
-    const effects = this.track.effects.slice();
+    const effects = [...this.track.effects];
     /* if (this._closestDropIndex > -1) {
       effects.splice(this._closestDropIndex, 0, {
         id: 'effect-placeholder',
@@ -333,7 +324,7 @@ export class InputChain extends LitElement {
   }
 
   override render() {
-    const isTrackDefined = typeof this.track !== 'undefined';
+    const isTrackDefined = this.track !== null;
     const classes = {
       'input-chain': true,
       'input-chain--isEmpty': !isTrackDefined,

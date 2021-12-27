@@ -248,12 +248,14 @@ export class ControlKnob extends LitElement {
       }
     }
 
-    const detail = { name: this.name, value };
     const event = new CustomEvent('knobvaluechanged', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail,
+      detail: {
+        name: this.name,
+        value,
+      },
     });
     this.dispatchEvent(event);
   }
@@ -293,7 +295,7 @@ export class ControlKnob extends LitElement {
     if (this._isDragging) {
       const min = Number(this.min);
       const max = Number(this.max);
-      const step = this.step || 1;
+      const step = this.step ?? 1;
       const startValue = this._startingValue;
       const startRotation = startValue / (max - min) * ControlKnob.maxRotation;
       const distance = this._startingY - event.y;
@@ -363,7 +365,7 @@ export class ControlKnob extends LitElement {
   }
 
   private _renderInput() {
-    const step = this.step || 1;
+    const step = this.step ?? 1;
     return html`
       <div class="control-knob__value">
         <div class="control-knob__input-wrapper">

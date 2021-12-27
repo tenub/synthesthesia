@@ -1,11 +1,9 @@
-import * as Tone from 'tone';
-
 export interface Track {
   id: number,
   name: string,
   midiInputId: string,
   midiOutputId: string,
-  channel: Tone.Channel,
+  channel: any,
   instrument: TrackInstrument,
   effects: TrackEffect[],
   patterns: TrackPattern[],
@@ -33,10 +31,13 @@ export interface TrackPatternNote {
   noteIndex: number,
   startTime: number,
   noteLength: number,
+  toneEventId?: number,
 }
 
 export interface TrackSelectedEvent extends CustomEvent {
-  detail: number,
+  detail: {
+    id: number,
+  },
 }
 
 export interface TrackUpdatedEvent extends CustomEvent {
@@ -47,8 +48,24 @@ export interface TrackUpdatedEvent extends CustomEvent {
       midiInputId?: string,
       midiOutputId?: string,
       channel?: any,
-      instrument?: any,
-      effects?: any[],
+      instrument?: TrackInstrument,
+      effects?: TrackEffect[],
+    },
+  },
+}
+
+export interface PatternSelectedEvent extends CustomEvent {
+  detail: {
+    id: number,
+  },
+}
+
+export interface PatternUpdatedEvent extends CustomEvent {
+  detail: {
+    id: number,
+    attributes: {
+      name?: string,
+      notes?: TrackPatternNote[],
     },
   },
 }

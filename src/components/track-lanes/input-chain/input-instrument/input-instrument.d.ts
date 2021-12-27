@@ -1,17 +1,14 @@
+import { TrackInstrument } from '../../track-lane';
 
 export interface AddInstrumentEvent extends CustomEvent {
   detail: {
-    instrument: {
-      id: string,
-      name: string,
-      toneInstrument: any,
-    },
+    instrument: TrackInstrument,
   },
 }
 
 export interface RemoveInstrumentEvent extends CustomEvent {
   detail: {
-    instrument: any,
+    instrument: TrackInstrument,
   },
 }
 

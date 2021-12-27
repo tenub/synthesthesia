@@ -170,33 +170,33 @@ export class TrackLane extends LitElement {
   }
 
   private _dispatchSelectTrack = () => {
-    const detail = this.track.id;
     const event = new CustomEvent('trackselected', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail,
+      detail: { id: this.track.id },
     });
     this.dispatchEvent(event);
   }
 
   private _dispatchUpdateTrack = (attributes: object) => {
-    const detail = { id: this.track.id, attributes };
     const event = new CustomEvent('trackupdated', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail,
+      detail: { id: this.track.id, attributes },
     });
     this.dispatchEvent(event);
   }
 
   private _dispatchSelectPattern = (id: number) => {
+    this._dispatchSelectTrack();
+
     const event = new CustomEvent('patternselected', {
       bubbles: true,
       composed: true,
       cancelable: true,
-      detail: id,
+      detail: { id },
     });
     this.dispatchEvent(event);
   }
@@ -249,7 +249,8 @@ export class TrackLane extends LitElement {
     return html`
       <div
         class="track__pattern"
-        @click=${() => {
+        @click=${(event: Event) => {
+          event.stopPropagation();
           this._dispatchSelectPattern(pattern.id);
         }}
       >

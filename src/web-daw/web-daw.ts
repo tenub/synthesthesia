@@ -131,7 +131,7 @@ export class WebDAW extends LitElement {
         break;
     }
 
-    const newMidiPorts = midiPorts.slice();
+    const newMidiPorts = [...midiPorts];
     const foundMidiPortIndex = WebDAW.findMidiPortById(midiPorts, changedMidiPort.id);
 
     switch (changedMidiPort.state) {

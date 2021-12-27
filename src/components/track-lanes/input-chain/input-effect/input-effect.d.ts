@@ -1,3 +1,5 @@
+import { TrackEffect } from '../../track-lane';
+
 export interface InputEffectLibraryItem {
   id: string,
   name: string,
@@ -17,11 +19,7 @@ export interface InputEffectLibraryItemParameter {
 export interface AddEffectEvent extends CustomEvent {
   detail: {
     index: number,
-    effect: {
-      id: string,
-      name: string,
-      toneEffect: any,
-    },
+    effect: TrackEffect,
   },
 }
 

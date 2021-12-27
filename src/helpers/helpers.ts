@@ -7,7 +7,7 @@ export function createToneAttributeUpdate(name: string, value: any): object {
   const attributes = {};
   const keys = name.split('.');
   const lastKey = keys.pop();
-  const lastObj = keys.reduce((obj, key) => obj[key] = obj[key] || {}, attributes); 
+  const lastObj = keys.reduce((obj, key) => obj[key] = obj[key] ?? {}, attributes); 
   lastObj[lastKey] = value;
   return attributes;
 }
@@ -27,6 +27,12 @@ export function flattenToneAttributes(
   }
 
   return obj;
+}
+
+export function midiNumberToFrequency(m: number): number {
+  const f2 = 440;
+  const f1 = Math.pow(2, (m - 69) / 12) * f2;
+  return f1 + Number.EPSILON;
 }
 
 export function formatBeats(beats: number): string {
