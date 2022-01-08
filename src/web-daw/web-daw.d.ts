@@ -49,3 +49,8 @@ export interface MIDINoteInput {
 export interface MIDINotes {
   [note: string]: number,
 }
+
+export interface DragData {
+  origin: string,
+  data: any,
+}

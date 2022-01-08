@@ -22,7 +22,6 @@ import {
 } from './track-lane/track-lane.d';
 import {
   AddInstrumentEvent,
-  RemoveInstrumentEvent,
 } from './input-chain/input-instrument/input-instrument.d';
 import {
   AddEffectEvent,
@@ -32,6 +31,7 @@ import {
   MIDIInput,
   MIDIOutput,
   MIDINoteInput,
+  DragData,
 } from '../../web-daw/web-daw.d';
 
 @customElement('track-lanes')
@@ -50,7 +50,9 @@ export class TrackLanes extends LitElement {
       grid-row: 2 / 2;
       grid-template-columns: [main-area] 100%;
       grid-template-rows: [tracks] calc(100vh - 832px) [piano-roll] 512px [chain] 256px;
+      overflow: hidden;
       position: relative;
+      width: calc(100vw - 320px);
       z-index: 1;
     }
 
@@ -61,6 +63,9 @@ export class TrackLanes extends LitElement {
     }
 
     .track-lanes {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
       grid-column: 1 / 1;
       grid-row: 1 / 1;
       overflow: auto;
@@ -87,6 +92,7 @@ export class TrackLanes extends LitElement {
       font-size: var(--main-font-size);
       margin: 0;
       padding: 0.25em;
+      white-space: nowrap;
     }
   `;
 
@@ -98,6 +104,9 @@ export class TrackLanes extends LitElement {
 
   @property({ type: Object })
   inputNotes: MIDINoteInput;
+
+  @property({ type: Object })
+  dragData: DragData;
 
   @state()
   tracks: Track[] = [];
@@ -227,26 +236,36 @@ export class TrackLanes extends LitElement {
 
   private _handleAddInstrument = (event: AddInstrumentEvent) => {
     const { instrument: instrumentToAdd } = event.detail;
-    const updatedTracks = [...this.tracks];
 
-    if (updatedTracks[this.selectedTrackIndex].instrument) {
-      updatedTracks[this.selectedTrackIndex].instrument.toneInstrument.dispose();
+    if (this.tracks[this.selectedTrackIndex].instrument?.toneInstrument) {
+      this.tracks[this.selectedTrackIndex].instrument.toneInstrument.dispose();
     }
 
-    updatedTracks[this.selectedTrackIndex].instrument = instrumentToAdd;
-    this.tracks = updatedTracks;
+    this.tracks = [
+      ...this.tracks.slice(0, this.selectedTrackIndex),
+      {
+        ...this.tracks[this.selectedTrackIndex],
+        instrument: instrumentToAdd,
+      },
+      ...this.tracks.slice(this.selectedTrackIndex + 1),
+    ];
 
-    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
     this._validateAudioChain(selectedTrack);
   }
 
-  private _handleRemoveInstrument = (event: RemoveInstrumentEvent) => {
-    const updatedTracks = [...this.tracks];
-    updatedTracks[this.selectedTrackIndex].instrument.toneInstrument.dispose();
-    updatedTracks[this.selectedTrackIndex].instrument = null;
-    this.tracks = updatedTracks;
+  private _handleRemoveInstrument = () => {
+    this.tracks[this.selectedTrackIndex].instrument?.toneInstrument.dispose();
+    this.tracks = [
+      ...this.tracks.slice(0, this.selectedTrackIndex),
+      {
+        ...this.tracks[this.selectedTrackIndex],
+        instrument: null,
+      },
+      ...this.tracks.slice(this.selectedTrackIndex + 1),
+    ];
 
-    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
     this._validateAudioChain(selectedTrack);
   }
 
@@ -262,12 +281,23 @@ export class TrackLanes extends LitElement {
 
   private _handleRemoveEffect = (event: RemoveEffectEvent) => {
     const { index: effectIndex } = event.detail;
-    const updatedTracks = [...this.tracks];
-    updatedTracks[this.selectedTrackIndex].effects[effectIndex].toneEffect.dispose();
-    updatedTracks[this.selectedTrackIndex].effects.splice(effectIndex, 1);
-    this.tracks = updatedTracks;
 
-    const selectedTrack = updatedTracks[this.selectedTrackIndex];
+    this.tracks[this.selectedTrackIndex].effects[effectIndex].toneEffect.dispose();
+
+    const clonedTracks = [...this.tracks];
+    const trackToUpdate = clonedTracks[this.selectedTrackIndex];
+    const effectsToUpdate = [...trackToUpdate.effects];
+    effectsToUpdate.splice(effectIndex, 1);
+    this.tracks = [
+      ...this.tracks.slice(0, this.selectedTrackIndex),
+      {
+        ...this.tracks[this.selectedTrackIndex],
+        effects: effectsToUpdate,
+      },
+      ...this.tracks.slice(this.selectedTrackIndex + 1),
+    ];
+
+    const selectedTrack = this.tracks[this.selectedTrackIndex];
     this._validateAudioChain(selectedTrack);
   }
 
@@ -421,6 +451,7 @@ export class TrackLanes extends LitElement {
 
       <input-chain
         .track=${this.selectedTrack}
+        .dragData=${this.dragData}
       ></input-chain>
     `;
   }

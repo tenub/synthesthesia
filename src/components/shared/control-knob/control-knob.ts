@@ -31,6 +31,13 @@ export class ControlKnob extends LitElement {
       box-sizing: inherit;
     }
 
+    .control-knob {
+      display: block;
+      font-size: 12px;
+      white-space: nowrap;
+      width: 72px;
+    }
+
     .control-knob__control {
       position: relative;
     }
@@ -251,7 +258,6 @@ export class ControlKnob extends LitElement {
     const event = new CustomEvent('knobvaluechanged', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: {
         name: this.name,
         value,

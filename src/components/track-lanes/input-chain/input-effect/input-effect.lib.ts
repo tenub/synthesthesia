@@ -30,14 +30,21 @@ export const effects: InputEffectLibraryItem[] = [{
   }, {
     id: 'filter.rolloff',
     name: 'Filter Rolloff',
-    min: -96,
-    max: -12,
-    step: 12,
+    min: 0,
+    max: 3,
+    step: 1,
+    valueMap: [
+      -12,
+      -24,
+      -48,
+      -96,
+    ]
   }, {
     id: 'filter.type',
     name: 'Filter Type',
     min: 0,
     max: 7,
+    step: 1,
     valueMap: [
       "allpass",
       "bandpass",
@@ -77,6 +84,7 @@ export const effects: InputEffectLibraryItem[] = [{
     name: 'Type',
     min: 0,
     max: 3,
+    step: 1,
     valueMap: [
       'sine',
       'triangle',

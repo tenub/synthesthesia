@@ -4,7 +4,7 @@ export interface Track {
   midiInputId: string,
   midiOutputId: string,
   channel: any,
-  instrument: TrackInstrument,
+  instrument: TrackInstrument | null,
   effects: TrackEffect[],
   patterns: TrackPattern[],
 }
@@ -12,13 +12,13 @@ export interface Track {
 export interface TrackInstrument {
   id: string,
   name: string,
-  toneInstrument: any,
+  toneInstrument?: any,
 }
 
 export interface TrackEffect {
   id: string,
   name: string,
-  toneEffect: any,
+  toneEffect?: any,
 }
 
 export interface TrackPattern {

@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   createToneAttributeUpdate,
@@ -20,7 +21,14 @@ export class InputEffect extends LitElement {
   static override styles = css`
     :host {
       box-sizing: var(--box-sizing);
+      background-color: var(--background-color-2);
       flex-grow: 1;
+      padding: 0.5em 2em;
+      user-select: none;
+    }
+
+    :host:hover {
+      background-color: var(--background-color-1);
     }
 
     :host *,
@@ -30,27 +38,14 @@ export class InputEffect extends LitElement {
     }
 
     h1 {
+      font-size: 20px;
       margin: 0.5em 0 0.25em;
     }
 
-    .input-chain__effect {
-      background-color: var(--background-color-2);
-      height: 100%;
-      margin: 0 0.5em;
-      padding: 0.5em 2em;
-      user-select: none;
-    }
-
-    .input-chain__effect:hover {
-      background-color: var(--background-color-1);
-    }
-
     .effect__controls {
-      display: flex;
-      flex-direction: column;
-      flex-wrap: wrap;
+      display: grid;
       gap: 0.25em 1em;
-      height: calc(126px + 0.5em);
+      grid-template-rows: [top-row] auto [bottom-row] auto;
     }
   `;
 
@@ -63,6 +58,7 @@ export class InputEffect extends LitElement {
   constructor() {
     super();
 
+    this.addEventListener('dragstart', this._handleDragStart);
     this.addEventListener('knobvaluechanged', this._handlePropChange);
   }
 
@@ -70,12 +66,22 @@ export class InputEffect extends LitElement {
     const event = new CustomEvent('effectremoved', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: {
         index: this.effectIndex,
       },
     });
     this.dispatchEvent(event);
+  }
+
+  private _handleDragStart = (event: DragEvent) => {
+    const data = JSON.stringify({
+      id: this.effect.id,
+      index: this.effectIndex,
+      name: this.effect.name,
+      type: 'effect',
+    });
+    event.dataTransfer.setData('text/plain', data);
+    event.dataTransfer.effectAllowed = 'move';
   }
 
   private _handlePropChange = (event: KnobValueChangedEvent) => {
@@ -95,13 +101,21 @@ export class InputEffect extends LitElement {
 
     const attributes = this.effect.toneEffect.get();
     const flattenedAttributes = flattenToneAttributes(attributes);
-    return effectControls.parameters.map((parameter: InputEffectLibraryItemParameter) => {
+    return effectControls.parameters.map((
+      parameter: InputEffectLibraryItemParameter,
+      index: number,
+    ) => {
       let { [parameter.id]: parameterValue }: { [key: string]: any } = flattenedAttributes;
       if (typeof parameterValue === 'undefined') {
         parameterValue = parameter.min;
       } else if (parameter.valueMap) {
         parameterValue = parameter.valueMap.findIndex(value => value === parameterValue);
       }
+
+      const isEvenIndex = index % 2 === 0;
+      const style = {
+        gridRow: isEvenIndex ? '1 / 1' : '2 / 2',
+      };
 
       return html`
         <control-knob
@@ -113,6 +127,7 @@ export class InputEffect extends LitElement {
           step=${parameter.step}
           unit=${parameter.unit}
           .valueMap=${parameter.valueMap}
+          style=${styleMap(style)}
         >
           ${parameter.name}
         </control-knob>
@@ -122,13 +137,11 @@ export class InputEffect extends LitElement {
 
   override render() {
     return html`
-      <section class="input-chain__effect">
-        <h1 @click=${this._dispatchRemoveEffect}>
-          ${this.effect.name}
-        </h1>
-        <section class="effect__controls">
-          ${this._renderControls()}
-        </section>
+      <h1 @click=${this._dispatchRemoveEffect}>
+        ${this.effect.name}
+      </h1>
+      <section class="effect__controls">
+        ${this._renderControls()}
       </section>
     `;
   }

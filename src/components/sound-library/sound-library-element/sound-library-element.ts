@@ -26,13 +26,18 @@ export class SoundLibraryElement extends LitElement {
   }
 
   private _handleDragStart = (event: DragEvent) => {
-    const data = JSON.stringify({
-      id: this.itemId,
-      name: this.name,
-      type: this.type,
-    });
-    event.dataTransfer.setData('text/plain', data);
+    const data = { id: this.itemId, name: this.name, type: this.type };
+    event.dataTransfer.setData('text/plain', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'move';
+
+    this.dispatchEvent(new CustomEvent('dragstarted', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        origin: 'sound-library',
+        data,
+      },
+    }));
   }
 
   override render() {

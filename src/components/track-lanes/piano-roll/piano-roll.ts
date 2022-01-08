@@ -69,25 +69,40 @@ export class PianoRoll extends LitElement {
       user-select: none;
     }
 
-    .piano-roll::after {
-      background-image: linear-gradient(to right, transparent, var(--background-color-2));
-      content: '';
-      display: block;
-      height: 100%;
-      position: absolute;
-      right: 0;
-      top: 0;
-      width: ${PianoRoll.gridSize}px;
-    }
-
     .piano-roll__ruler {
       border-bottom: 2px solid hsl(0, 0%, 37.5%);
-      height: ${PianoRoll.gridSize}px;
+      height: ${PianoRoll.gridSize + 2}px;
       left: ${PianoRoll.keyWidth}px;
       overflow: hidden;
       position: absolute;
-      top: 0;
+      top: -2px;
       width: calc(100% - ${PianoRoll.keyWidth}px);
+    }
+
+    .piano-roll__grid {
+      border-color: var(--background-color-6);
+      border-style: solid;
+      border-width: 0 0 1px 0;
+      display: flex;
+      flex-direction: column-reverse;
+      height: calc(100% - ${PianoRoll.gridSize}px);
+      left: ${PianoRoll.keyWidth}px;
+      overflow: hidden;
+      position: absolute;
+      top: ${PianoRoll.gridSize}px;
+      width: calc(100% - ${PianoRoll.keyWidth}px);
+    }
+
+    .piano-roll__ruler-canvas,
+    .piano-roll__grid-canvas {
+      min-height: 100%;
+      min-width: 100%;
+    }
+
+    .piano-roll__grid-canvas {
+      bottom: 0;
+      left: 0;
+      position: absolute;
     }
 
     .piano-roll__keys {
@@ -144,26 +159,13 @@ export class PianoRoll extends LitElement {
       color: var(--main-color);
     }
 
-    .piano-roll__grid {
-      border-color: var(--background-color-6);
-      border-style: solid;
-      border-width: 0 0 1px 0;
-      display: flex;
-      flex-direction: column-reverse;
-      height: calc(100% - ${PianoRoll.gridSize}px);
-      left: ${PianoRoll.keyWidth}px;
-      overflow: hidden;
-      position: absolute;
-      top: ${PianoRoll.gridSize}px;
-      width: calc(100% - ${PianoRoll.keyWidth}px);
-    }
-
     .pattern__notes {
       height: 100%;
       left: 0;
       position: absolute;
       top: 0;
       width: 100%;
+      z-index: 1;
     }
 
     .pattern__note {
@@ -219,6 +221,18 @@ export class PianoRoll extends LitElement {
     this.addEventListener('pointerup', this._handleGridPointerUp);
   }
 
+  override connectedCallback(): void {
+    super.connectedCallback();
+    window.addEventListener('resize', this._drawRuler);
+    window.addEventListener('resize', this._drawGrid);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.removeEventListener('resize', this._drawRuler);
+    window.removeEventListener('resize', this._drawGrid);
+  }
+
   override updated(changedProperties: Map<string, any>): void {
     const hasPrevPattern = changedProperties.has('pattern')
     const prevPattern = changedProperties.get('pattern');
@@ -271,7 +285,6 @@ export class PianoRoll extends LitElement {
     this.dispatchEvent(new CustomEvent('patternupdated', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: {
         id: this.pattern.id,
         attributes: {
@@ -369,7 +382,6 @@ export class PianoRoll extends LitElement {
     this.dispatchEvent(new CustomEvent('patternupdated', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: {
         id: this.pattern.id,
         attributes: {
@@ -426,14 +438,29 @@ export class PianoRoll extends LitElement {
     }
   }
 
-  private _drawRuler() {
-    const gridSize = PianoRoll.gridSize * window.devicePixelRatio;
+  private _drawRuler = (): void => {
+    // reset any previous attributes
     const rulerCanvasElement = this._rulerCanvasRef.value! as HTMLCanvasElement;
-    const context = rulerCanvasElement.getContext('2d');
+    rulerCanvasElement.removeAttribute('height');
+    rulerCanvasElement.removeAttribute('width');
+    rulerCanvasElement.style.height = 'auto';
+    rulerCanvasElement.style.width = 'auto';
 
-    const { height, width } = rulerCanvasElement;
-    rulerCanvasElement.style.height = `${height / window.devicePixelRatio}px`;
-    rulerCanvasElement.style.width = `${width / window.devicePixelRatio}px`;
+    // size the ruler according to current container dimensions
+    const rulerCanvasRect = rulerCanvasElement.getBoundingClientRect();
+    const width = rulerCanvasRect.width * window.devicePixelRatio;
+    const gridSize = PianoRoll.gridSize * window.devicePixelRatio;
+    const minWidth = 64 * gridSize;
+    const actualWidth = minWidth < width ? width : minWidth;
+    rulerCanvasElement.height = gridSize;
+    rulerCanvasElement.width = actualWidth;
+
+    rulerCanvasElement.style.height = `${gridSize / window.devicePixelRatio}px`;
+    rulerCanvasElement.style.width = `${actualWidth / window.devicePixelRatio}px`;
+
+    // empty any previous content
+    const context = rulerCanvasElement.getContext('2d');
+    context.clearRect(0, 0, rulerCanvasElement.width, rulerCanvasElement.height);
 
     context.fillStyle = 'white';
     context.strokeStyle = 'hsl(0, 0%, 37.5%)';
@@ -441,10 +468,10 @@ export class PianoRoll extends LitElement {
     context.textAlign = 'center';
     context.beginPath();
 
-    for (let x = 0; x < width; x += gridSize) {
+    for (let x = 0; x < actualWidth; x += gridSize) {
       const p = 0.5 + x;
-      context.moveTo(p, height - 8);
-      context.lineTo(p, height);
+      context.moveTo(p, gridSize - 8);
+      context.lineTo(p, gridSize);
 
       const timeStep = x / gridSize;
       const timeStepText = formatBeats(timeStep / 4);
@@ -456,23 +483,42 @@ export class PianoRoll extends LitElement {
     context.stroke();
   }
 
-  private _drawGrid(): void {
-    const gridSize = PianoRoll.gridSize * window.devicePixelRatio;
+  private _drawGrid = (): void => {
+    // reset any previous attributes
     const gridCanvasElement = this._gridCanvasRef.value! as HTMLCanvasElement;
-    const context = gridCanvasElement.getContext('2d');
+    gridCanvasElement.removeAttribute('height');
+    gridCanvasElement.removeAttribute('width');
+    gridCanvasElement.style.height = 'auto';
+    gridCanvasElement.style.width = 'auto';
 
-    const { height, width } = gridCanvasElement;
-    gridCanvasElement.style.height = `${height / window.devicePixelRatio}px`;
-    gridCanvasElement.style.width = `${width / window.devicePixelRatio}px`;
+    // size the grid according to current container dimensions
+    const gridCanvasRect = gridCanvasElement.getBoundingClientRect();
+    const height = gridCanvasRect.height * window.devicePixelRatio;
+    const width = gridCanvasRect.width * window.devicePixelRatio;
+    const gridSize = PianoRoll.gridSize * window.devicePixelRatio;
+    const minWidth = 64 * gridSize;
+    const numNotes = PianoRoll.numOctaves * 12;
+    const minHeight = numNotes * gridSize;
+    const actualWidth = minWidth < width ? width : minWidth;
+    const actualHeight = minHeight < height ? height : minHeight;
+    gridCanvasElement.height = actualHeight;
+    gridCanvasElement.width = actualWidth;
+
+    gridCanvasElement.style.height = `${actualHeight / window.devicePixelRatio}px`;
+    gridCanvasElement.style.width = `${actualWidth / window.devicePixelRatio}px`;
+
+    // empty any previous content
+    const context = gridCanvasElement.getContext('2d');
+    context.clearRect(0, 0, gridCanvasElement.width, gridCanvasElement.height);
 
     // draw note lines
     context.fillStyle = 'hsl(0, 0%, 18.75%)';
     context.beginPath();
 
-    const numNotes = PianoRoll.numOctaves * 12;
-    for (let y = 0; y < numNotes; y++) {
+    
+    for (let y = 0; y < numNotes; y += 1) {
       if ([0, 2, 4, 6, 7, 9, 11].includes(y % 12)) {
-        context.rect(0, y * gridSize, width, gridSize);
+        context.rect(0, y * gridSize, actualWidth, gridSize);
       }
     }
 
@@ -481,21 +527,21 @@ export class PianoRoll extends LitElement {
     // draw time lines
     context.strokeStyle = 'hsl(0, 0%, 12.5%)';
 
-    const numTicks = 4 ** 3;
-    for (let x = 1; x < numTicks; x++) {
+    for (let x = 0; x < actualWidth; x += gridSize) {
       context.beginPath();
 
-      if (x % 16 === 0) {
+      const timeStep = x / gridSize;
+      if (timeStep % 16 === 0) {
         context.fillStyle = 'hsl(0, 0%, 12.5%)';
-        context.rect(0.5 + (x * gridSize - 1.5), 0, 3, height);
+        context.rect(0.5 + (x - 1.5), 0, 3, actualHeight);
         context.fill();
         continue;
       }
 
-      if (x % 4 === 0) {
-        const p = 0.5 + x * gridSize;
+      if (timeStep % 4 === 0) {
+        const p = 0.5 + x;
         context.moveTo(p, 0);
-        context.lineTo(p, height);
+        context.lineTo(p, actualHeight);
         context.stroke();
       }
     }
@@ -519,8 +565,6 @@ export class PianoRoll extends LitElement {
         <canvas
           ${ref(this._rulerCanvasRef)}
           class="piano-roll__ruler-canvas"
-          height=${PianoRoll.gridSize * window.devicePixelRatio}
-          width=${PianoRoll.gridSize * 4 ** 3 * window.devicePixelRatio}
         ></canvas>
       </div>
     `;

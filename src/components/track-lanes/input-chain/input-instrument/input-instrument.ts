@@ -21,13 +21,13 @@ export class InputInstrument extends LitElement {
     }
 
     h1 {
-      margin: 1em 0 0.25em;
+      font-size: 20px;
+      margin: 0.5em 0 0.25em;
     }
 
     .input-chain__instrument {
       background-color: var(--background-color-2);
       height: 100%;
-      margin: 0 0.5em;
       padding: 0.5em 2em;
       user-select: none;
     }
@@ -38,9 +38,8 @@ export class InputInstrument extends LitElement {
 
     .instrument__controls {
       display: grid;
-      gap: 0.5em 1em;
-      grid-template-columns: 96px 96px;
-      grid-template-rows: 64px 64px;
+      gap: 0.25em 1em;
+      grid-template-rows: [top-row] auto [bottom-row] auto;
     }
   `;
 
@@ -57,7 +56,6 @@ export class InputInstrument extends LitElement {
     const event = new CustomEvent('instrumentremoved', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: {
         instrument: this.instrument,
       },

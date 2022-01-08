@@ -1,10 +1,13 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef } from 'lit/directives/ref.js';
-import { classMap } from 'lit/directives/class-map.js';
 import * as Tone from 'tone';
 
+import { DragData } from '../../../web-daw/web-daw.d';
+
 import { Track } from '../track-lane/track-lane.d';
+
+import { DropTarget } from './input-chain.d';
 
 import './input-instrument';
 import './input-effect';
@@ -17,9 +20,13 @@ export class InputChain extends LitElement {
       box-shadow: 0 0 1em var(--background-color-1);
       box-sizing: var(--box-sizing);
       display: flex;
+      gap: 0 0.5em;
       grid-column: 1 / 1;
       grid-row: 3 / 3;
-      padding: 0.5em 1em;
+      height: calc(100% + 0.5em);
+      overflow-x: scroll;
+      overflow-y: visible;
+      padding: 0.5em 1em 0;
       position: relative;
       z-index: 2;
     }
@@ -30,66 +37,53 @@ export class InputChain extends LitElement {
       box-sizing: inherit;
     }
 
-    ::-webkit-scrollbar {
+    :host::-webkit-scrollbar {
       background: none;
-      height: 12px;
-      width: 12px;
+      height: 2.5em;
+      width: 2.5em;
     }
 
-    ::-webkit-scrollbar-thumb {
+    :host::-webkit-scrollbar-thumb {
       background: var(--background-color-1);
       background-clip: content-box;
-      border: 2px solid transparent;
-      border-radius: 6px;
+      border: 1em solid transparent;
+      border-radius: 1.25em;
     }
 
-    .input-chain:not(.input-chain--isEmpty) {
-      display: flex;
-      flex-grow: 1;
-      gap: 0 0.5em;
+    :host::-webkit-scrollbar-corner {
+      background: none;
     }
 
-    .input-chain--isEmpty {
+    .input-chain-placeholder {
       align-items: center;
       color: grey;
       display: flex;
+      flex-grow: 1;
       justify-content: center;
-      width: 100%;
       user-select: none;
     }
 
     .input-chain__instrument,
     .input-chain__effects {
       background-color: var(--background-color-3);
-      border-top: 1px solid var(--background-color-1);
       border-radius: 0.5em;
-      box-shadow: 0 0.125em 0.25em var(--background-color-1);
       display: flex;
+      flex-shrink: 0;
       gap: 0.5em;
-      height: 100%;
       min-width: 64px;
-      padding: 0.5em 0;
+      padding: 0.5em;
       position: relative;
     }
 
-    .input-chain__instrument {
-
-    }
-
-    .input-chain__effects {
-      flex-grow: 1;
-      overflow-x: auto;
-    }
-
-    .input-chain__effect-placeholder {
+    .chain-placeholder {
       background-color: red;
       border-radius: 1px;
-      height: calc(100% - --size-increment);
+      height: calc(100% - var(--size-increment));
       margin: 0 var(--size-increment);
       width: 2px;
     }
 
-    .chain-placeholder {
+    .input-chain-item-placeholder {
       font-size: 0.75em;
       left: 50%;
       position: absolute;
@@ -102,8 +96,13 @@ export class InputChain extends LitElement {
   @property({ type: Object })
   track: Track;
 
+  @property({ type: Object })
+  dragData: DragData;
+
   @state()
-  _closestDropIndex = -1;
+  _dropTarget: DropTarget = {
+    element: null,
+  };
 
   _instrumentRef = createRef<HTMLDivElement>();
 
@@ -178,30 +177,82 @@ export class InputChain extends LitElement {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
 
-    let closestDiffX;
+    const intrumentContainer = this._instrumentRef.value!;
+    const isOverInstrumentContainer = this._isOver(event, intrumentContainer);
+    const isDraggedItemInstrument = this.dragData.origin === 'sound-library'
+      && this.dragData.data.type === 'instrument';
+    if (isOverInstrumentContainer && isDraggedItemInstrument) {
+      this._dropTarget = {
+        element: intrumentContainer,
+        index: 0,
+      };
+
+      return;
+    }
 
     const effectsContainer = this._effectsRef.value!;
-    const closestDropIndex = [...effectsContainer.children].reduce((
-      closestIndex,
-      element,
-      index,
-    ) => {
-      const effectElement = element as HTMLElement;
-      const midElementX = effectElement.offsetLeft + effectElement.offsetWidth / 2;
-      const diffX =  event.offsetX - midElementX;
-      const diffXMagnitude = Math.abs(diffX);
-      const isFirstElement = typeof closestDiffX === 'undefined';
-      if (isFirstElement || diffXMagnitude < closestDiffX) {
-        closestDiffX = diffXMagnitude;
-        closestIndex = index;
+    const isOverEffectsContainer = this._isOver(event, effectsContainer);
+    const isDraggedItemEffect = this.dragData.origin === 'sound-library'
+      && this.dragData.data.type === 'effect';
+    const effectElements = [...effectsContainer.children].filter(child => {
+      const isEffect = child.nodeName === 'INPUT-EFFECT';
+      return isEffect;
+    });
+
+    if (isOverEffectsContainer && isDraggedItemEffect) {
+      if (!effectElements.length) {
+        this._dropTarget = {
+          element: effectsContainer,
+          index: 0,
+        };
+
+        return;
       }
 
-      return (isFirstElement || (!isFirstElement && diffX < 0))
-        ? closestIndex
-        : closestIndex + 1;
-    }, 0);
+      let closestDiffX;
 
-    this._closestDropIndex = closestDropIndex;
+      const dropTarget = effectElements.reduce((
+        closestDropTarget,
+        element,
+        index,
+      ) => {
+        const chainElement = element as HTMLElement;
+        const {
+          left: chainElementLeft,
+          width: chainElementWidth,
+        } = chainElement.getBoundingClientRect();
+        const midElementX = chainElementLeft + chainElementWidth / 2;
+        const diffX =  event.x - midElementX;
+        const diffXMagnitude = Math.abs(diffX);
+        if (diffXMagnitude >= closestDiffX) {
+          return closestDropTarget;
+        }
+
+        closestDiffX = diffXMagnitude;
+
+        return {
+          element,
+          index,
+          isBefore: diffX < 0,
+        };
+      }, {
+        element: null,
+      });
+
+      this._dropTarget = dropTarget;
+
+      return;
+    }
+
+    this._dropTarget = {
+      element: null,
+    }
+  }
+
+  private _isOver = (event: DragEvent, element: HTMLElement) => {
+    const { x, y } = event;
+    const { top, right, bottom, left } = element.getBoundingClientRect();
+    return x >= left && y >= top && x <= right && y <= bottom;
   }
 
   private _handleDrop = (event: DragEvent) => {
@@ -217,7 +268,6 @@ export class InputChain extends LitElement {
         const event = new CustomEvent('instrumentadded', {
           bubbles: true,
           composed: true,
-          cancelable: true,
           detail: {
             instrument,
           },
@@ -232,12 +282,12 @@ export class InputChain extends LitElement {
           return;
         }
 
+        const { index, isBefore } = this._dropTarget;
         const event = new CustomEvent('effectadded', {
           bubbles: true,
           composed: true,
-          cancelable: true,
           detail: {
-            index: this._closestDropIndex,
+            index: isBefore ? index : index + 1,
             effect,
           },
         });
@@ -248,16 +298,22 @@ export class InputChain extends LitElement {
       default: break;
     }
 
-    this._closestDropIndex = -1;
+    this._dropTarget = {
+      element: null,
+    };
   }
 
-  private _handleDragEnded = (event: DragEvent) => {
-    this._closestDropIndex = -1;
+  private _handleDragEnded = () => {
+    this._dropTarget = {
+      element: null,
+    };
   }
 
   private _renderInstrument() {
-    if (!this.track.instrument) {
-      return this._renderChainPlaceholder('instrument');
+    if (this.track.instrument.id === 'chain-placeholder') {
+      return html`
+        <div class="chain-placeholder"></div>
+      `;
     }
 
     return html`
@@ -266,9 +322,9 @@ export class InputChain extends LitElement {
   }
 
   private _renderEffect(effect: any, index: number) {
-    if (effect.id === 'effect-placeholder') {
+    if (effect.id === 'chain-placeholder') {
       return html`
-        <div class="input-chain__effect-placeholder"></div>
+        <div class="chain-placeholder"></div>
       `;
     }
 
@@ -282,28 +338,42 @@ export class InputChain extends LitElement {
 
   private _renderChainPlaceholder(type: string) {
     return html`
-      <div class="chain-placeholder">
+      <div class="input-chain-item-placeholder">
         Drag ${type} here
       </div>
     `;
   }
 
   private _renderChain = () => {
+    const { element, index, isBefore } = this._dropTarget;
+    if (element !== null
+      && (element.classList.contains('input-chain__instrument')
+        || element.nodeName === 'INPUT-INSTRUMENT')) {
+      this.track.instrument = {
+        id: 'chain-placeholder',
+        name: 'Instrument Placeholder',
+      };
+    }
+
     const effects = [...this.track.effects];
-    /* if (this._closestDropIndex > -1) {
-      effects.splice(this._closestDropIndex, 0, {
-        id: 'effect-placeholder',
+    if (element !== null
+      && (element.classList.contains('input-chain__effects')
+        || element.nodeName === 'INPUT-EFFECT')) {
+      const insertIndex = isBefore ? index : index + 1;
+      effects.splice(insertIndex, 0, {
+        id: 'chain-placeholder',
         name: 'Effect Placeholder',
-        toneEffect: null,
       });
-    } */
+    }
 
     return html`
       <div
         ${ref(this._instrumentRef)}
         class="input-chain__instrument"
       >
-        ${this._renderInstrument()}
+        ${this.track.instrument
+          ? this._renderInstrument()
+          : this._renderChainPlaceholder('instrument')}
       </div>
 
       <div
@@ -319,21 +389,13 @@ export class InputChain extends LitElement {
   
   private _renderNullState() {
     return html`
-      <span>No track selected</span>
+      <div class="input-chain-placeholder">No track selected</div>
     `;
   }
 
   override render() {
     const isTrackDefined = this.track !== null;
-    const classes = {
-      'input-chain': true,
-      'input-chain--isEmpty': !isTrackDefined,
-    };
-    return html`
-      <div class=${classMap(classes)}>
-        ${isTrackDefined ? this._renderChain() : this._renderNullState()}
-      </div>
-    `;
+    return isTrackDefined ? this._renderChain() : this._renderNullState();
   }
 }
 

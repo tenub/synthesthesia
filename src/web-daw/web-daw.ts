@@ -13,6 +13,7 @@ import {
   MIDIConnectionEvent,
   MIDIMessageEvent,
   MIDINoteInput,
+  DragData,
 } from './web-daw.d';
 
 @customElement('web-daw')
@@ -73,6 +74,9 @@ export class WebDAW extends LitElement {
     super();
 
     this._initMIDIAccess();
+
+    this.addEventListener('dragstarted', this._handleDragStart);
+    this.addEventListener('dragended', this._handleDragEnd);
   }
 
   override connectedCallback(): void {
@@ -91,10 +95,13 @@ export class WebDAW extends LitElement {
   midiInputs: MIDIInput[] = []
 
   @state()
-  midiOutputs: MIDIOutput[] = []
+  midiOutputs: MIDIOutput[] = [];
 
   @state()
-  inputNotes: MIDINoteInput = {}
+  inputNotes: MIDINoteInput = {};
+
+  @state()
+  dragData: DragData = null;
 
   private async _initMIDIAccess() {
     if (typeof window.navigator.requestMIDIAccess !== 'function') {
@@ -225,6 +232,14 @@ export class WebDAW extends LitElement {
     }
   }
 
+  private _handleDragStart = (event: CustomEvent) => {
+    this.dragData = event.detail;
+  }
+
+  private _handleDragEnd = () => {
+    this.dragData = null;
+  }
+
   override render() {
     return html`
       <global-controls></global-controls>
@@ -233,6 +248,7 @@ export class WebDAW extends LitElement {
         .midiInputs=${this.midiInputs}
         .midiOutputs=${this.midiOutputs}
         .inputNotes=${this.inputNotes}
+        .dragData=${this.dragData}
       ></track-lanes>
     `;
   }

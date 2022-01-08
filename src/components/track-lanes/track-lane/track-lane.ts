@@ -13,7 +13,6 @@ import { Track, TrackPattern } from './track-lane.d';
 export class TrackLane extends LitElement {
   static override styles = css`
     :host {
-      background-color: var(--background-color-3);
       box-shadow: 0 0 1em var(--background-color-1);
       box-sizing: var(--box-sizing);
     }
@@ -25,40 +24,42 @@ export class TrackLane extends LitElement {
     }
 
     .track {
-      background-color: var(--background-color-3);
-      border-bottom: 1px solid var(--background-color-2);
       display: flex;
       height: 96px;
-      justify-content: flex-end;
-      width: 100%;
-    }
-
-    .track__controls {
-      background-color: var(--background-color-4);
-      padding: 0.5em 1em;
     }
 
     .track__timeline {
+      background-color: var(--background-color-3);
       padding: 0.5em 1em;
-      width: 100%;
+      flex-grow: 1;
+      flex-shrink: 0;
     }
 
     .track__patterns {
-      align-items: flex-start;
-      display: inline-flex;
-      flex-direction: column;
-      flex-wrap: wrap;
+      display: grid;
       gap: 0.5em;
+      grid-auto-columns: 128px;
+      grid-template-rows: repeat(2, 1fr);
       height: 100%;
     }
 
+    .track__patterns :nth-child(odd) {
+      grid-row: 1 / 1;
+    }
+
+    .track__patterns :nth-child(even) {
+      grid-row: 2 / 2;
+    }
+
     .track__pattern {
+      align-items: center;
       background-color: var(--background-color-4);
       border: 1px dashed var(--background-color-2);
       border-radius: var(--size-increment);
       box-shadow: 0 0.125em 0.5em var(--background-color-2);
+      display: flex;
       font-size: 0.75em;
-      padding: 0.5em 1em;
+      padding: 0 1em;
     }
 
     .track__pattern:hover {
@@ -75,6 +76,13 @@ export class TrackLane extends LitElement {
       font-size: var(--main-font-size);
       margin: 0;
       padding: 0.25em;
+      white-space: nowrap;
+    }
+
+    .track__controls {
+      background-color: var(--background-color-4);
+      flex-shrink: 0;
+      padding: 0.5em 1em;
     }
 
     .track__label {
@@ -101,6 +109,8 @@ export class TrackLane extends LitElement {
     }
 
     .track__midi {
+      background-color: var(--background-color-3);
+      flex-shrink: 0;
       padding: 0.5em 1em;
     }
 
@@ -110,6 +120,7 @@ export class TrackLane extends LitElement {
       color: var(--main-color);
       display: block;
       font-size: 0.75em;
+      width: 100%;
     }
 
     .track__midi-input:focus {
@@ -122,6 +133,7 @@ export class TrackLane extends LitElement {
 
     .track__output {
       background-color: var(--background-color-4);
+      flex-shrink: 0;
       padding: 0.5em 0.5em 0.5em 1em;
     }
   `;
@@ -173,7 +185,6 @@ export class TrackLane extends LitElement {
     const event = new CustomEvent('trackselected', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: { id: this.track.id },
     });
     this.dispatchEvent(event);
@@ -183,7 +194,6 @@ export class TrackLane extends LitElement {
     const event = new CustomEvent('trackupdated', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: { id: this.track.id, attributes },
     });
     this.dispatchEvent(event);
@@ -195,7 +205,6 @@ export class TrackLane extends LitElement {
     const event = new CustomEvent('patternselected', {
       bubbles: true,
       composed: true,
-      cancelable: true,
       detail: { id },
     });
     this.dispatchEvent(event);
