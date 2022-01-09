@@ -203,6 +203,12 @@ export class PianoRoll extends LitElement {
   @state()
   _workingNoteIndex = -1;
 
+  @state()
+  _pointerOffset = {
+    left: 0,
+    top: 0,
+  };
+
   _rulerRef = createRef<HTMLDivElement>();
 
   _rulerCanvasRef = createRef<HTMLCanvasElement>();
@@ -310,7 +316,11 @@ export class PianoRoll extends LitElement {
     const foundNote = this.pattern.notes[foundNoteIndex];
     const startTimeX = foundNote.startTime * PianoRoll.gridSize;
     const endTimeX = (foundNote.startTime + foundNote.noteLength) * PianoRoll.gridSize;
+    const startNoteY = foundNote.noteIndex * PianoRoll.gridSize;
     this._isMovingNote = left - startTimeX > 8 && endTimeX - left > 8;
+    const pointerOffsetX = left - startTimeX;
+    const pointerOffsetY = top - startNoteY;
+    this._pointerOffset = { left: pointerOffsetX, top: pointerOffsetY };
   }
 
   private _handleGridPointerMove(event: PointerEvent) {
@@ -350,10 +360,10 @@ export class PianoRoll extends LitElement {
 
     const { notes: updatedNotes } = { ...this.pattern };
     const isUpdatingStartTime = left < (noteStartX + noteEndX) / 2;
-
     if (this._isMovingNote) {
-      const updatedStartTime = Math.round(left / PianoRoll.gridSize);
-      const updatedNoteIndex = Math.round(top / PianoRoll.gridSize);
+      const { left: pointerOffsetLeft, top: pointerOffsetTop } = this._pointerOffset;
+      const updatedStartTime = Math.round((left - pointerOffsetLeft) / PianoRoll.gridSize);
+      const updatedNoteIndex = Math.round((top - pointerOffsetTop) / PianoRoll.gridSize);
       updatedNotes[this._workingNoteIndex] = {
         ...workingNote,
         noteIndex: updatedNoteIndex,
