@@ -18,6 +18,12 @@ export class PianoRoll extends LitElement {
 
   static keyWidth = 64;
 
+  static noteMapLength = noteMap.length;
+
+  static reversedOctaveMap = [...octaveMap].reverse();
+  
+  static reversedNoteMap = [...noteMap].reverse();
+
   static override styles = css`
     :host {
       background-color: var(--background-color-2);
@@ -83,8 +89,6 @@ export class PianoRoll extends LitElement {
       border-color: var(--background-color-6);
       border-style: solid;
       border-width: 0 0 1px 0;
-      display: flex;
-      flex-direction: column-reverse;
       height: calc(100% - ${PianoRoll.gridSize}px);
       left: ${PianoRoll.keyWidth}px;
       overflow: hidden;
@@ -100,15 +104,12 @@ export class PianoRoll extends LitElement {
     }
 
     .piano-roll__grid-canvas {
-      bottom: 0;
+      top: 0;
       left: 0;
       position: absolute;
     }
 
     .piano-roll__keys {
-      display: flex;
-      flex-direction: column-reverse;
-      gap: 1px;
       height: calc(100% - ${PianoRoll.gridSize + 1}px);
       left: 0;
       overflow: hidden;
@@ -118,9 +119,18 @@ export class PianoRoll extends LitElement {
       z-index: 1;
     }
 
+    .piano-roll__keys-container {
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      left: 0;
+      position: absolute;
+    }
+
     .piano-roll__octave {
       display: flex;
-      flex-direction: column-reverse;
+      flex-direction: column;
       gap: 1px;
       margin-left: ${PianoRoll.keyWidth / 2}px;
     }
@@ -217,6 +227,8 @@ export class PianoRoll extends LitElement {
 
   _gridCanvasRef = createRef<HTMLCanvasElement>();
 
+  _notesRef = createRef<HTMLDivElement>();
+
   _pianoKeysRef = createRef<HTMLDivElement>();
 
   constructor() {
@@ -242,7 +254,7 @@ export class PianoRoll extends LitElement {
   override updated(changedProperties: Map<string, any>): void {
     const hasPrevPattern = changedProperties.has('pattern')
     const prevPattern = changedProperties.get('pattern');
-    if ((!hasPrevPattern || prevPattern === null) && this.pattern !== null) {
+    if (hasPrevPattern && prevPattern === null &&  this.pattern !== null) {
       this._drawRuler();
       this._drawGrid();
     }
@@ -260,30 +272,29 @@ export class PianoRoll extends LitElement {
   }
 
   private _handleDblClick = (event: PointerEvent) => {
-    const { x, y } = event;
-    const { left, top } = this._getGridCoords(x, y);
-    const noteIndex = Math.floor(top / PianoRoll.gridSize);
-    const timeStep = Math.floor(left / PianoRoll.gridSize);
+    const gridCoords = this._getGridCoords(event.x, event.y);
+    const noteIndex = Math.floor(gridCoords.y / PianoRoll.gridSize);
+    const timeStep = Math.floor(gridCoords.x / PianoRoll.gridSize);
 
     const { notes: updatedNotes } = { ...this.pattern };
-    const foundNoteIndex = this._getHoveredNote(left, top);
+    const foundNoteIndex = this._getHoveredNote(gridCoords.x, gridCoords.y);
     if (foundNoteIndex > -1) {
       const { toneEventId } = updatedNotes[foundNoteIndex];
       Tone.Transport.clear(toneEventId);
       updatedNotes.splice(foundNoteIndex, 1);
     } else {
-      const { instrument } = this.track;
-      const frequency = midiNumberToFrequency(noteIndex);
       const { bpm } = Tone.Transport.get();
       const offsetTime = timeStep * 60 / (16 * bpm);
       const toneEventId = Tone.Transport.scheduleRepeat((time: number) => {
+        const { instrument } = this.track;
+        const frequency = midiNumberToFrequency(noteIndex);
         instrument.toneInstrument.triggerAttackRelease(frequency, '4n');
       }, '1:0:0', offsetTime);
 
       updatedNotes.push({
         noteIndex,
         startTime: timeStep,
-        noteLength: 4,
+        noteLength: 16,
         toneEventId,
       });
     }
@@ -305,9 +316,8 @@ export class PianoRoll extends LitElement {
       return;
     }
 
-    const { x, y } = event;
-    const { left, top } = this._getGridCoords(x, y);
-    const foundNoteIndex = this._getHoveredNote(left, top);
+    const gridCoords = this._getGridCoords(event.x, event.y);
+    const foundNoteIndex = this._getHoveredNote(gridCoords.x, gridCoords.y);
     this._workingNoteIndex = foundNoteIndex;
     if (foundNoteIndex < 0) {
       return;
@@ -317,9 +327,9 @@ export class PianoRoll extends LitElement {
     const startTimeX = foundNote.startTime * PianoRoll.gridSize;
     const endTimeX = (foundNote.startTime + foundNote.noteLength) * PianoRoll.gridSize;
     const startNoteY = foundNote.noteIndex * PianoRoll.gridSize;
-    this._isMovingNote = left - startTimeX > 8 && endTimeX - left > 8;
-    const pointerOffsetX = left - startTimeX;
-    const pointerOffsetY = top - startNoteY;
+    this._isMovingNote = gridCoords.x - startTimeX > 8 && endTimeX - gridCoords.x > 8;
+    const pointerOffsetX = gridCoords.x - startTimeX;
+    const pointerOffsetY = gridCoords.y - startNoteY;
     this._pointerOffset = { left: pointerOffsetX, top: pointerOffsetY };
   }
 
@@ -339,8 +349,8 @@ export class PianoRoll extends LitElement {
   }
 
   private _handleHoverNoteState(x: number, y: number) {
-    const { left, top } = this._getGridCoords(x, y);
-    const foundNoteIndex = this._getHoveredNote(left, top);
+    const gridCoords = this._getGridCoords(x, y);
+    const foundNoteIndex = this._getHoveredNote(gridCoords.x, gridCoords.y);
     if (foundNoteIndex < 0) {
       return;
     }
@@ -348,29 +358,29 @@ export class PianoRoll extends LitElement {
     const foundNote = this.pattern.notes[foundNoteIndex];
     const startTimeX = foundNote.startTime * PianoRoll.gridSize;
     const endTimeX = (foundNote.startTime + foundNote.noteLength) * PianoRoll.gridSize;
-    this._isHoveringNoteResize = left - startTimeX <= 8 || endTimeX - left <= 8;
+    this._isHoveringNoteResize = gridCoords.x - startTimeX <= 8 || endTimeX - gridCoords.x <= 8;
   }
 
   private _handleNoteUpdate(x: number, y: number) {
-    const { left, top } = this._getGridCoords(x, y);
+    const gridCoords = this._getGridCoords(x, y);
     const notes = [...this.pattern.notes];
     const workingNote = notes[this._workingNoteIndex];
     const noteStartX = workingNote.startTime * PianoRoll.gridSize;
     const noteEndX = (workingNote.startTime + workingNote.noteLength) * PianoRoll.gridSize;
 
     const { notes: updatedNotes } = { ...this.pattern };
-    const isUpdatingStartTime = left < (noteStartX + noteEndX) / 2;
+    const isUpdatingStartTime = gridCoords.x < (noteStartX + noteEndX) / 2;
     if (this._isMovingNote) {
       const { left: pointerOffsetLeft, top: pointerOffsetTop } = this._pointerOffset;
-      const updatedStartTime = Math.round((left - pointerOffsetLeft) / PianoRoll.gridSize);
-      const updatedNoteIndex = Math.round((top - pointerOffsetTop) / PianoRoll.gridSize);
+      const updatedStartTime = Math.round((gridCoords.x - pointerOffsetLeft) / PianoRoll.gridSize);
+      const updatedNoteIndex = Math.round((gridCoords.y - pointerOffsetTop) / PianoRoll.gridSize);
       updatedNotes[this._workingNoteIndex] = {
         ...workingNote,
         noteIndex: updatedNoteIndex,
         startTime: updatedStartTime,
       };
     } else if (isUpdatingStartTime) {
-      const updatedStartTime = Math.round(left / PianoRoll.gridSize);
+      const updatedStartTime = Math.round(gridCoords.x / PianoRoll.gridSize);
       const updatedNoteLength = workingNote.noteLength + (workingNote.startTime - updatedStartTime);
       if (updatedNoteLength <= 0) {
         return;
@@ -382,12 +392,33 @@ export class PianoRoll extends LitElement {
         noteLength: updatedNoteLength,
       };
     } else {
-      const updatedNoteLength = Math.round(left / PianoRoll.gridSize) - workingNote.startTime;
+      const updatedNoteLength = Math.round(gridCoords.x / PianoRoll.gridSize) - workingNote.startTime;
       updatedNotes[this._workingNoteIndex] = {
         ...workingNote,
         noteLength: updatedNoteLength,
       };
     }
+
+    const {
+      noteIndex,
+      startTime,
+      noteLength,
+      toneEventId: prevToneEventId,
+    } = updatedNotes[this._workingNoteIndex];
+    Tone.Transport.clear(prevToneEventId);
+
+    const { bpm } = Tone.Transport.get();
+    const offsetTime = startTime * 60 / (16 * bpm);
+    const toneEventId = Tone.Transport.scheduleRepeat((time: number) => {
+      const { instrument } = this.track;
+      const frequency = midiNumberToFrequency(noteIndex);
+      const numBars = Math.floor(noteLength / 64);
+      const numQuarterNotes = Math.floor(noteLength % 64 / 16);
+      const numSixteenthNotes = noteLength % 16 / 4;
+      const tr = `${numBars}:${numQuarterNotes}:${numSixteenthNotes}`;
+      instrument.toneInstrument.triggerAttackRelease(frequency, tr);
+    }, '1:0:0', offsetTime);
+    updatedNotes[this._workingNoteIndex].toneEventId = toneEventId;
 
     this.dispatchEvent(new CustomEvent('patternupdated', {
       bubbles: true,
@@ -408,33 +439,51 @@ export class PianoRoll extends LitElement {
 
     this._workingNoteIndex = -1;
     this._isMovingNote = false;
+    this._pointerOffset = { left: 0, top: 0 };
   }
 
-  private _getHoveredNote(left: number, top: number) {
-    const noteIndex = Math.floor(top / PianoRoll.gridSize);
+  private _getHoveredNote(x: number, y: number) {
+    const noteIndex = Math.floor(y / PianoRoll.gridSize);
     const foundNoteIndex = this.pattern.notes.findIndex((note: TrackPatternNote) =>
       note.noteIndex === noteIndex
-        && left >= note.startTime * PianoRoll.gridSize
-        && left <= (note.startTime + note.noteLength) * PianoRoll.gridSize);
+        && x >= note.startTime * PianoRoll.gridSize
+        && x <= (note.startTime + note.noteLength) * PianoRoll.gridSize);
     return foundNoteIndex;
   }
 
   private _getGridCoords(x: number, y: number) {
     const gridElement = this._gridRef.value! as HTMLDivElement;
-    const { offsetHeight, scrollLeft, scrollTop } = gridElement;
-    const { left: rectLeft, top: rectTop } = gridElement.getBoundingClientRect();
-    const left = x - rectLeft + scrollLeft;
-    const top = rectTop + offsetHeight - y - scrollTop;
-    return { left, top };
+    const {
+      scrollLeft: gridElementScrollLeft,
+      scrollTop: gridElementScrollTop,
+    } = gridElement;
+    const {
+      left: gridElementLeft,
+      top: gridElementTop,
+    } = gridElement.getBoundingClientRect();
+
+    const gridCanvasElement = this._gridCanvasRef.value! as HTMLCanvasElement;
+    const { offsetHeight: gridCanvasElementHeight } = gridCanvasElement;
+
+    const gridX = x - gridElementLeft + gridElementScrollLeft;
+    const gridY =  gridCanvasElementHeight + gridElementTop - y - gridElementScrollTop;
+    return { x: gridX, y: gridY };
   }
 
   private _handleScroll = (event: WheelEvent) => {
     const gridElement = this._gridRef.value! as HTMLDivElement;
 
-    if (event.shiftKey) {
+    if (event.shiftKey || Math.abs(event.deltaX) > 0) {
       const rulerElement = this._rulerRef.value! as HTMLDivElement;
-      const direction = event.deltaY < 0 ? -1 : 1;
       const { scrollLeft } = gridElement;
+
+      let direction;
+      if (event.deltaY < 0 || event.deltaX < 0) {
+        direction = -1;
+      } else if (event.deltaY >= 0 || event.deltaX >= 0) {
+        direction = 1;
+      }
+
       const updatedScrollLeft = scrollLeft + direction * PianoRoll.gridSize;
       gridElement.scrollLeft = updatedScrollLeft;
       rulerElement.scrollLeft = updatedScrollLeft;
@@ -514,14 +563,21 @@ export class PianoRoll extends LitElement {
     gridCanvasElement.height = actualHeight;
     gridCanvasElement.width = actualWidth;
 
-    gridCanvasElement.style.height = `${actualHeight / window.devicePixelRatio}px`;
-    gridCanvasElement.style.width = `${actualWidth / window.devicePixelRatio}px`;
+    const styleHeight = actualHeight / window.devicePixelRatio;
+    const styleWidth = actualWidth / window.devicePixelRatio;
+    gridCanvasElement.style.height = `${styleHeight}px`;
+    gridCanvasElement.style.width = `${styleWidth}px`;
+
+    // size the notes container to the same dimensions
+    const notesElement = this._notesRef.value! as HTMLDivElement;
+    notesElement.style.height = `${styleHeight}px`;
+    notesElement.style.width = `${styleWidth}px`;
 
     // empty any previous content
     const context = gridCanvasElement.getContext('2d');
     context.clearRect(0, 0, gridCanvasElement.width, gridCanvasElement.height);
 
-    // draw note lines
+    // draw note rectangles
     context.fillStyle = 'hsl(0, 0%, 18.75%)';
     context.beginPath();
 
@@ -555,6 +611,14 @@ export class PianoRoll extends LitElement {
         context.stroke();
       }
     }
+
+    const gridElement = this._gridRef.value! as HTMLDivElement;
+    const pianoKeysElement = this._pianoKeysRef.value! as HTMLDivElement;
+    const { height: gridCanvasElementHeight } = gridCanvasElement.getBoundingClientRect();
+    const { height: gridElementHeight } = gridElement.getBoundingClientRect();
+    const maxScrollTop = gridCanvasElementHeight - gridElementHeight;
+    gridElement.scrollTop = maxScrollTop;
+    pianoKeysElement.scrollTop = maxScrollTop;
   }
 
   private _renderPattern() {
@@ -586,43 +650,52 @@ export class PianoRoll extends LitElement {
         ${ref(this._pianoKeysRef)}
         class="piano-roll__keys"
       >
-        ${octaveMap.map((octave: number) => {
-          return html`
-            <div class="piano-roll__octave">
-              ${noteMap.map((note: string, index: number) => {
-                const noteIndex = octave * 12 + index;
-                const playedNote = activeInputNotes[noteIndex];
-                const isNotePlaying = typeof playedNote !== 'undefined';
-                const [letter] = note.split('');
-                const isC = index % 12 === 0;
-                const noteClasses = {
-                  'piano-roll__note': true,
-                  'piano-roll__note--sharp': note.includes('#'),
-                  'piano-roll__note--playing': isNotePlaying,
-                };
+        <div class="piano-roll__keys-container">
+          ${PianoRoll.reversedOctaveMap.map((octave: number) => {
+            return html`
+              <div class="piano-roll__octave">
+                ${PianoRoll.reversedNoteMap.map((note: string, index: number) => {
+                  const actualIndex = PianoRoll.noteMapLength - index;
+                  const noteIndex = octave * PianoRoll.noteMapLength + actualIndex;
+                  const playedNote = activeInputNotes[noteIndex];
+                  const isNotePlaying = typeof playedNote !== 'undefined';
+                  const [letter] = note.split('');
+                  const isC = actualIndex % PianoRoll.noteMapLength === 1;
+                  const noteClasses = {
+                    'piano-roll__note': true,
+                    'piano-roll__note--sharp': note.includes('#'),
+                    'piano-roll__note--playing': isNotePlaying,
+                  };
 
-                if (isC) {
-                  return html`
-                    <div class=${classMap(noteClasses)}>
-                      <div class="piano-roll__letter">
-                        ${letter}${octave}
+                  if (isC) {
+                    return html`
+                      <div class=${classMap(noteClasses)}>
+                        <div class="piano-roll__letter">
+                          ${letter}${octave}
+                        </div>
                       </div>
-                    </div>
-                  `;
-                }
+                    `;
+                  }
 
-                return html`
-                  <div class=${classMap(noteClasses)}></div>
-                `;
-              })}
-            </div>
-          `;
-        })}
+                  return html`
+                    <div class=${classMap(noteClasses)}></div>
+                  `;
+                })}
+              </div>
+            `;
+          })}
+        </div>
       </div>
     `;
   }
 
   private _renderPatternGrid() {
+    const width = PianoRoll.gridSize * 4 ** 3;
+    const canvasWidth = width * window.devicePixelRatio;
+
+    const height = PianoRoll.gridSize * noteMap.length * octaveMap.length;
+    const canvasHeight = height * window.devicePixelRatio;
+
     return html`
       <div
         ${ref(this._gridRef)}
@@ -630,7 +703,10 @@ export class PianoRoll extends LitElement {
         @dblclick=${this._handleDblClick}
         @wheel=${this._handleScroll}
       >
-        <div class="pattern__notes">
+        <div
+          ${ref(this._notesRef)}
+          class="pattern__notes"
+        >
           ${this.pattern.notes.map((note: TrackPatternNote) => {
             const noteOctave = Math.floor(note.noteIndex / 12);
             const noteName = noteMap[note.noteIndex % 12];
@@ -654,11 +730,12 @@ export class PianoRoll extends LitElement {
             `;
           })}
         </div>
+
         <canvas
           ${ref(this._gridCanvasRef)}
           class="piano-roll__grid-canvas"
-          height=${PianoRoll.gridSize * 12 * 9 * window.devicePixelRatio}
-          width=${PianoRoll.gridSize * 4 ** 3 * window.devicePixelRatio}
+          height=${canvasHeight}
+          width=${canvasWidth}
         ></canvas>
       </div>
     `;
